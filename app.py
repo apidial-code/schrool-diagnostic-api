@@ -1,25 +1,25 @@
 """
 Schrool Diagnostic Tests Backend
-Flask API for handling test submissions and email notifications
+Flask API for handling test submissions and email notifications using Brevo
 """
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Email, To, Content
 import os
 from datetime import datetime
 import json
+import requests
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend requests
 
-# SendGrid API Key (set in Heroku environment variables)
-SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
+# Brevo API Key (set in Heroku environment variables)
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY')
+BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email'
 
-# Email templates
-FIRST_TEST_TEMPLATE_ID = os.environ.get('FIRST_TEST_TEMPLATE_ID')
-COMBINED_TEST_TEMPLATE_ID = os.environ.get('COMBINED_TEST_TEMPLATE_ID')
+# Sender email (must be verified in Brevo)
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'diagnostics@schrool.com')
+SENDER_NAME = os.environ.get('SENDER_NAME', 'Schrool Diagnostics')
 
 @app.route('/')
 def home():
@@ -27,7 +27,8 @@ def home():
     return jsonify({
         'status': 'running',
         'service': 'Schrool Diagnostic Tests API',
-        'version': '1.0'
+        'version': '1.1',
+        'email_service': 'Brevo'
     })
 
 @app.route('/api/submit-test', methods=['POST'])
@@ -67,25 +68,76 @@ def submit_test():
         else:
             result = send_combined_results_email(data)
         
-        return jsonify(result), 200
+        if result.get('success'):
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 500
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+def send_brevo_email(to_email, to_name, subject, html_content):
+    """
+    Send email using Brevo API
+    
+    Args:
+        to_email: Recipient email address
+        to_name: Recipient name
+        subject: Email subject
+        html_content: HTML email content
+    
+    Returns:
+        dict: Response with success status and message
+    """
+    try:
+        headers = {
+            'accept': 'application/json',
+            'api-key': BREVO_API_KEY,
+            'content-type': 'application/json'
+        }
+        
+        payload = {
+            'sender': {
+                'name': SENDER_NAME,
+                'email': SENDER_EMAIL
+            },
+            'to': [
+                {
+                    'email': to_email,
+                    'name': to_name
+                }
+            ],
+            'subject': subject,
+            'htmlContent': html_content
+        }
+        
+        response = requests.post(BREVO_API_URL, json=payload, headers=headers)
+        
+        if response.status_code in [200, 201]:
+            return {
+                'success': True,
+                'message': 'Email sent successfully',
+                'email': to_email
+            }
+        else:
+            return {
+                'success': False,
+                'error': f'Brevo API error: {response.status_code} - {response.text}'
+            }
+            
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Failed to send email: {str(e)}'
+        }
 
 def send_first_test_email(data):
     """Send email with first test results and link to second test"""
     
     try:
         # Get base URL from environment or request
-        base_url = os.environ.get('FRONTEND_URL', 'https://test.schrool.com')
+        base_url = os.environ.get('FRONTEND_URL', 'https://test.schrool.net')
         second_test_link = f"{base_url}/schrool-fresher/index.html#grade-selection"
-        
-        # Prepare email content
-        message = Mail(
-            from_email=Email('diagnostics@schrool.com', 'Schrool Diagnostics'),
-            to_emails=To(data['parent_email']),
-            subject=f"{data['student_name']}'s Math Diagnostic Test Results"
-        )
         
         # Email body
         interpretation = get_interpretation(data['percentage'])
@@ -140,17 +192,10 @@ def send_first_test_email(data):
         </html>
         """
         
-        message.content = Content("text/html", html_content)
+        subject = f"{data['student_name']}'s Math Diagnostic Test Results"
+        to_name = data.get('parent_name', 'Parent')
         
-        # Send email via SendGrid
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        response = sg.send(message)
-        
-        return {
-            'success': True,
-            'message': 'First test results email sent',
-            'email': data['parent_email']
-        }
+        return send_brevo_email(data['parent_email'], to_name, subject, html_content)
         
     except Exception as e:
         return {
@@ -162,13 +207,6 @@ def send_combined_results_email(data):
     """Send email with combined results from both tests"""
     
     try:
-        # Prepare email content
-        message = Mail(
-            from_email=Email('diagnostics@schrool.com', 'Schrool Diagnostics'),
-            to_emails=To(data['parent_email']),
-            subject=f"Complete Diagnostic Results for {data['student_name']}"
-        )
-        
         html_content = f"""
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -212,17 +250,10 @@ def send_combined_results_email(data):
         </html>
         """
         
-        message.content = Content("text/html", html_content)
+        subject = f"Complete Diagnostic Results for {data['student_name']}"
+        to_name = data.get('parent_name', 'Parent')
         
-        # Send email via SendGrid
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        response = sg.send(message)
-        
-        return {
-            'success': True,
-            'message': 'Combined results email sent',
-            'email': data['parent_email']
-        }
+        return send_brevo_email(data['parent_email'], to_name, subject, html_content)
         
     except Exception as e:
         return {
