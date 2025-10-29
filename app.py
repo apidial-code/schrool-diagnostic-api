@@ -6,7 +6,7 @@ Flask API for handling test submissions and email notifications using Brevo
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import requests
 
@@ -135,6 +135,14 @@ def send_first_test_email(data):
     """Send email with first test results and link to second test"""
     
     try:
+        # Extract first name only from student_name
+        student_full_name = data['student_name']
+        student_first_name = student_full_name.split()[0] if student_full_name else 'Student'
+        
+        # Calculate 48-hour deadline
+        deadline = datetime.now() + timedelta(hours=48)
+        deadline_str = deadline.strftime('%A, %B %d at %I:%M %p')
+        
         # Get base URL from environment or request
         base_url = os.environ.get('FRONTEND_URL', 'https://test.schrool.net')
         second_test_link = f"{base_url}/schrool-fresher/index.html#grade-selection"
@@ -146,11 +154,11 @@ def send_first_test_email(data):
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #2563eb;">Test Results for {data['student_name']}</h2>
+                <h2 style="color: #2563eb;">Test Results for {student_first_name}</h2>
                 
                 <p>Dear {data.get('parent_name', 'Parent')},</p>
                 
-                <p>Thank you for completing the first diagnostic test for {data['student_name']}!</p>
+                <p>Thank you for completing the first diagnostic test for {student_first_name}!</p>
                 
                 <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
                     <h3 style="margin-top: 0;">Test Results</h3>
@@ -172,8 +180,11 @@ def send_first_test_email(data):
                             Take Second Test Now
                         </a>
                     </p>
-                    <p style="font-size: 14px; color: #666; margin-top: 10px;">
-                        We recommend completing the second test within 48 hours for the most accurate assessment.
+                    <p style="font-size: 16px; color: #dc2626; font-weight: bold; margin-top: 15px;">
+                        ⏰ Complete the second test within 48 hours!
+                    </p>
+                    <p style="font-size: 14px; color: #666; margin-top: 5px;">
+                        Link expires: <strong>{deadline_str}</strong>
                     </p>
                 </div>
                 
@@ -192,7 +203,7 @@ def send_first_test_email(data):
         </html>
         """
         
-        subject = f"{data['student_name']}'s Math Diagnostic Test Results"
+        subject = f"⏰ {student_first_name}'s Test Results - Complete 2nd Test Within 48 Hours!"
         to_name = data.get('parent_name', 'Parent')
         
         return send_brevo_email(data['parent_email'], to_name, subject, html_content)
