@@ -1,7 +1,6 @@
 """
 Schrool Diagnostic Tests Backend
 Flask API for handling test submissions and email notifications using Brevo
-FIXED VERSION - Properly handles both test scores in combined results email
 """
 
 from flask import Flask, request, jsonify
@@ -22,19 +21,14 @@ BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email'
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'diagnostics@schrool.com')
 SENDER_NAME = os.environ.get('SENDER_NAME', 'Schrool Diagnostics')
 
-# In-memory storage for test results (temporary solution)
-# In production, use a database like PostgreSQL or Redis
-test_results_storage = {}
-
 @app.route('/')
 def home():
     """Health check endpoint"""
     return jsonify({
         'status': 'running',
         'service': 'Schrool Diagnostic Tests API',
-        'version': '1.2-FIXED',
-        'email_service': 'Brevo',
-        'fix': 'Properly displays both test scores in combined results email'
+        'version': '1.1',
+        'email_service': 'Brevo'
     })
 
 @app.route('/api/submit-test', methods=['POST'])
@@ -68,38 +62,11 @@ def submit_test():
             if field not in data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
         
-        # Create unique key for this student (email + student name)
-        student_key = f"{data['parent_email']}_{data['student_name']}".lower().replace(' ', '_')
-        
         # Send appropriate email
         if data.get('is_first_test', True):
-            # Store first test results
-            test_results_storage[student_key] = {
-                'test1_name': f"{data['test_curriculum']} Grade {data['test_grade']}",
-                'test1_score': data['percentage'],
-                'test1_raw': f"{data['score']}/{data['total']}",
-                'timestamp': datetime.now().isoformat(),
-                'parent_name': data.get('parent_name', 'Parent'),
-                'student_name': data['student_name']
-            }
             result = send_first_test_email(data)
         else:
-            # Retrieve first test results and combine with second test
-            first_test = test_results_storage.get(student_key, {})
-            
-            # Add both test scores to data
-            data['test1_name'] = first_test.get('test1_name', 'First Test')
-            data['test1_score'] = first_test.get('test1_score', 'N/A')
-            data['test1_raw'] = first_test.get('test1_raw', 'N/A')
-            data['test2_name'] = f"{data['test_curriculum']} Grade {data['test_grade']}"
-            data['test2_score'] = data['percentage']
-            data['test2_raw'] = f"{data['score']}/{data['total']}"
-            
             result = send_combined_results_email(data)
-            
-            # Clean up stored results after sending combined email
-            if student_key in test_results_storage:
-                del test_results_storage[student_key]
         
         if result.get('success'):
             return jsonify(result), 200
@@ -248,7 +215,7 @@ def send_first_test_email(data):
         }
 
 def send_combined_results_email(data):
-    """Send email with combined results from both tests - FIXED VERSION"""
+    """Send email with combined results from both tests"""
     
     try:
         html_content = f"""
@@ -263,11 +230,8 @@ def send_combined_results_email(data):
                 
                 <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
                     <h3 style="margin-top: 0;">Complete Results Summary</h3>
-                    <p><strong>Test 1:</strong> {data.get('test1_name', 'First Test')} - <strong style="color: #059669; font-size: 18px;">{data.get('test1_score', 'N/A')}%</strong></p>
-                    <p style="font-size: 14px; color: #666; margin-left: 20px;">Raw Score: {data.get('test1_raw', 'N/A')}</p>
-                    
-                    <p style="margin-top: 15px;"><strong>Test 2:</strong> {data.get('test2_name', 'Second Test')} - <strong style="color: #059669; font-size: 18px;">{data.get('test2_score', 'N/A')}%</strong></p>
-                    <p style="font-size: 14px; color: #666; margin-left: 20px;">Raw Score: {data.get('test2_raw', 'N/A')}</p>
+                    <p><strong>Test 1:</strong> {data.get('test1_name', 'First Test')} - {data.get('test1_score', 'N/A')}%</p>
+                    <p><strong>Test 2:</strong> {data.get('test2_name', 'Second Test')} - {data.get('test2_score', 'N/A')}%</p>
                 </div>
                 
                 <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -324,3 +288,4 @@ def get_interpretation(percentage):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
