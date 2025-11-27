@@ -242,7 +242,8 @@ def send_first_test_email(data):
     """Send email after first test completion"""
     try:
         # Calculate second test grade (one grade lower)
-        second_test_grade = str(int(data['test_grade']) - 1)
+     second_test_grade = data.get('next_test_grade', str(int(data['test_grade']) + 1))
+
         
         # Determine performance level
         percentage = data['percentage']
@@ -306,7 +307,8 @@ def send_first_test_email(data):
                 </div>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="http://test.schrool.net/schrool-fresher/" 
+                    <a href=f"http://test.schrool.net/schrool-fresher/{data['test_curriculum'].lower( )}-year{second_test_grade}-math-test.html"
+
                        style="display: inline-block; background-color: #2563eb; color: white; padding: 15px 40px; 
                               text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
                         Take Test 2 Now
