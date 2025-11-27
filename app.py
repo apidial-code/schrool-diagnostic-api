@@ -305,15 +305,18 @@ def send_first_test_email(data):
                         <strong>Test 2:</strong> {data['test_curriculum']} Grade {second_test_grade}
                     </p>
                 </div>
+                            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="http://test.schrool.net/schrool-fresher/{data['test_curriculum'].lower( )}-year{second_test_grade}-math-test.html"
                 
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="http://test.schrool.net/schrool-fresher/{data['test_curriculum'].lower( )}-year{second_test_grade}-math-test.html"
+                style="display: inline-block; background-color: #2563eb; color: white; padding: 15px 40px;
+                    text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
+                    
+                    Take Test 2 Now
+                </a>
+            </div>
 
-                       style="display: inline-block; background-color: #2563eb; color: white; padding: 15px 40px; 
-                              text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
-                        Take Test 2 Now
-                    </a>
-                </div>
+                
                 
                 <div style="background-color: #e0f2fe; padding: 20px; border-radius: 8px; margin-top: 25px;">
                     <h3 style="color: #075985; margin-top: 0; font-size: 16px;">What Happens Next?</h3>
