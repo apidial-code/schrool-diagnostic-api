@@ -438,11 +438,11 @@ def send_diagnostic_test_email():
             <strong>Test 2:</strong> {test2_country} Year {second_test_grade}
 
         </p>
-        <a href="http://test.schrool.net/schrool-fresher/{test2_country.lower( )}-year{second_test_grade}-math-test.html"
+        <a href="http://test.schrool.net/schrool-fresher/{test2_country.lower( )}-grade{second_test_grade}-math-test.html"
 
-        <a href="http://test.schrool.net/schrool-fresher/{test2_country.lower( )}-year{second_test_grade}-math-test.html"
+        <a href="http://test.schrool.net/schrool-fresher/{test2_country.lower( )}-grade{second_test_grade}-math-test.html"
 
-            <a href="http://test.schrool.net/schrool-fresher/{test2_country.lower( )}-year{second_test_grade}-math-test.html"
+            <a href="http://test.schrool.net/schrool-fresher/{test2_country.lower( )}-grade{second_test_grade}-math-test.html"
 
                style="display: inline-block; background-color: #2563eb; color: white; padding: 15px 40px;
                       text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
