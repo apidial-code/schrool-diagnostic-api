@@ -381,13 +381,15 @@ def send_diagnostic_test_email():
     try:
         data = request.json
         
-        # Extract data
+               # Extract data
         parent_name = data.get('parent_name', 'Parent')
         parent_email = data.get('parent_email')
         student_name = data.get('student_name', 'Your child')
-        test_curriculum = data.get('test_curriculum', 'Australia')
+        test1_country = data.get('test1_country', data.get('country', 'Australia'))
+        test2_country = data.get('test2_country', data.get('country', 'Australia'))
         first_test_grade = data.get('first_test_grade', '4')
         second_test_grade = data.get('second_test_grade', '5')
+
         
         if not parent_email:
             return {'success': False, 'error': 'Parent email is required'}
@@ -413,9 +415,12 @@ def send_diagnostic_test_email():
         </p>
         
         <div style="background-color: white; padding: 25px; border-radius: 8px; border-left: 4px solid #667eea; margin-bottom: 25px;">
-            <h2 style="color: #1f2937; margin-top: 0; font-size: 20px;">Test 1 Results</h2>
+             <strong>Test:</strong> {test1_country} Year {first_test_grade}
+
+
             <p style="font-size: 18px; margin: 10px 0;">
-                <strong>Test:</strong> {test_curriculum} Grade {first_test_grade}
+                <strong>Test:</strong> {test1_country} Year {first_test_grade}
+
             </p>
         </div>
         
@@ -424,15 +429,21 @@ def send_diagnostic_test_email():
             <p style="color: #78350f; margin-bottom: 15px;">
                 To receive your complete diagnostic report and personalized recommendations,
                 please have {student_name} complete the second test within the next <strong>48 hours</strong>.
-            </p>
+                            <strong>Test 2:</strong> {test2_country} Year {second_test_grade}
+
         </div>
         
-        <p style="color: #78350f; margin: 0;">
-            <strong>Test 2:</strong> {test_curriculum} Grade {second_test_grade}
+        <strong>Test 2:</strong> {test2_country} Year {second_test_grade}
+
+            <strong>Test 2:</strong> {test2_country} Year {second_test_grade}
+
         </p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-            <a href="http://test.schrool.net/schrool-fresher/{test_curriculum.lower( )}-year{second_test_grade}-math-test.html"
+        <a href="http://test.schrool.net/schrool-fresher/{test2_country.lower( )}-year{second_test_grade}-math-test.html"
+
+        <a href="http://test.schrool.net/schrool-fresher/{test2_country.lower( )}-year{second_test_grade}-math-test.html"
+
+            <a href="http://test.schrool.net/schrool-fresher/{test2_country.lower( )}-year{second_test_grade}-math-test.html"
+
                style="display: inline-block; background-color: #2563eb; color: white; padding: 15px 40px;
                       text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
                 Take Test 2 Now
