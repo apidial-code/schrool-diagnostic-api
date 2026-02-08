@@ -241,8 +241,9 @@ def submit_test():
 def send_first_test_email(data):
     """Send email after first test completion"""
     try:
-        # Calculate second test grade (one grade lower)
-        second_test_grade = data.get('next_test_grade') or str(int(data['test_grade']) - 1) 
+        # next_grade = data.get('next_test_grade', '').strip()
+second_test_grade = next_grade if next_grade else str(int(data['test_grade']) - 1)
+ 
 
         
         # Determine performance level
