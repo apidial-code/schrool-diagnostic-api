@@ -244,9 +244,6 @@ def send_first_test_email(data):
 try:
     next_grade = data.get('next_test_grade', '').strip()
     second_test_grade = next_grade if next_grade else str(int(data['test_grade']) - 1)
-
- 
-
         
         # Determine performance level
         percentage = data['percentage']
