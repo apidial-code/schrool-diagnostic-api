@@ -244,9 +244,16 @@ def send_first_test_email(data):
 try:
     second_test_grade = str(int(data['test_grade']) - 1)
 
+
+
+  
         # Determine performance level
         percentage = data['percentage']
         if percentage >= 75:
+
+
+
+          
             performance = "Strong"
             color = "#059669"
         elif percentage >= 60:
