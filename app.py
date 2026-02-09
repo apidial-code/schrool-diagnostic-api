@@ -14,7 +14,7 @@ import sqlite3
 from contextlib import contextmanager
 
 app = Flask(__name__)
-CORS(app, origins=['http://schrool.net', 'https://schrool.net', 'http://test.schrool.net', 'https://test.schrool.net'], supports_credentials=True )
+CORS(app, origins=['https://schrool.net', 'https://test.schrool.net'], supports_credentials=True)
   # Enable CORS for frontend requests
 
 # Brevo API Key (set in Heroku environment variables)
