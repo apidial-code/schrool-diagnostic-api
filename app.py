@@ -241,7 +241,12 @@ def submit_test():
 def send_first_test_email(data):
     """Send email after first test completion"""
     try:
-        second_test_grade = str(int(data['test_grade']) - 1)
+        # Calculate the next test grade
+        # Student's available tests are: (year - 2) and (year - 1)
+        # If they took one, the next is the other one
+        student_year = int(data['school_grade'])
+        test_grade = int(data['test_grade'])
+        second_test_grade = str((student_year - 2) + (student_year - 1) - test_grade)
         
         # Determine performance level
         percentage = data['percentage']
