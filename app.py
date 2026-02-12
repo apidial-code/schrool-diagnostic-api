@@ -189,7 +189,7 @@ def submit_test():
         data = request.json
         
         # Validate required fields
-        required_fields = ['parent_email', 'student_name', 'test_curriculum', 
+        required_fields = ['parent_email', 'student_name', 'test_curriculum','school_grade', 
                           'test_grade', 'score', 'total', 'percentage']
         
         for field in required_fields:
