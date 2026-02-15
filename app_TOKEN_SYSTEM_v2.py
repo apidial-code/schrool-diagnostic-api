@@ -12,19 +12,19 @@ import uuid
 import json
 from datetime import datetime, timedelta
 import requests
-from functools import wraps
-
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
 
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
+# Configure CORS to allow requests from frontend
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["https://test.schrool.net", "http://localhost:3000", "http://localhost:5173"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
+    }
+} )
 
-# Brevo API Configuration
-BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
-BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email'
 
 # Sender Configuration
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'diagnostics@schrool.com' )
