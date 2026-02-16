@@ -285,8 +285,19 @@ def send_first_test_email(data):
         performance = get_performance_level(percentage)
         color = performance['color']
         
-        # Calculate second test grade
-        second_test_grade = str(int(data['test_grade']) - 1)
+        # Calculate second test grade using universal formula
+        # If student took (current_year - 2), next test is (current_year - 1)
+        # If student took (current_year - 1), next test is (current_year - 2)
+        current_year = int(data['school_grade'])
+        test1_grade = int(data['test_grade'])
+        
+        if test1_grade == current_year - 2:
+            second_test_grade = str(current_year - 1)
+        elif test1_grade == current_year - 1:
+            second_test_grade = str(current_year - 2)
+        else:
+            # Fallback (shouldn't happen with proper validation)
+            second_test_grade = str(current_year - 1)
         
         html_content = f"""
         <!DOCTYPE html>
