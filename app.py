@@ -15,13 +15,12 @@ from contextlib import contextmanager
 
 app = Flask(__name__)
 CORS(app, origins=['http://schrool.net', 'https://schrool.net', 'http://test.schrool.net', 'https://test.schrool.net'], supports_credentials=True )
-  # Enable CORS for frontend requests
 
 # Brevo API Key (set in Heroku environment variables)
 BREVO_API_KEY = os.environ.get('BREVO_API_KEY')
 BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email'
 
-# Sender email (must be verified in Brevo)
+# Sender email (must be verified in Brevo )
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'diagnostics@schrool.com')
 SENDER_NAME = os.environ.get('SENDER_NAME', 'Schrool Diagnostics')
 
@@ -159,10 +158,14 @@ def home():
     return jsonify({
         'status': 'running',
         'service': 'Schrool Diagnostic Tests API',
-        'version': '1.3-DATABASE',
-        'email_service': 'Brevo',
-        'storage': 'SQLite Database',
-        'fix': 'Persistent storage survives server restarts'
+        'version': '2.0-FIXED',
+        'features': [
+            'Token generation for one-time links',
+            '48-hour token expiration',
+            'Combined results email',
+            'Automatic form skipping with token',
+            'Brevo email integration'
+        ]
     })
 
 @app.route('/api/submit-test', methods=['POST'])
@@ -172,16 +175,13 @@ def submit_test():
     
     Expected JSON:
     {
-        "parent_name": "John Doe",
         "parent_email": "john@example.com",
         "student_name": "Jane Doe",
-        "school_grade": "6",
-        "test_curriculum": "Australia",
-        "test_grade": "5",
-        "score": 18,
-        "total": 25,
-        "percentage": 72,
-        "time_used": 1800,
+        "test_curriculum": "ireland",
+        "test_grade": "year4",
+        "score": 10,
+        "total": 18,
+        "percentage": 56,
         "is_first_test": true
     }
     """
@@ -240,20 +240,10 @@ def submit_test():
 
 def send_first_test_email(data):
     """Send email after first test completion"""
-
-try:
-    second_test_grade = str(int(data['test_grade']) - 1)
-
-
-
-  
+    try:
         # Determine performance level
         percentage = data['percentage']
         if percentage >= 75:
-
-
-
-          
             performance = "Strong"
             color = "#059669"
         elif percentage >= 60:
@@ -275,7 +265,7 @@ try:
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 28px;">⏰ Test 1 Complete!</h1>
+                <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Test 1 Complete!</h1>
             </div>
             
             <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
@@ -293,39 +283,23 @@ try:
                     <p style="font-size: 24px; margin: 10px 0; color: {color};">
                         <strong>Score: {percentage}%</strong>
                     </p>
-                    <p style="font-size: 14px; color: #666; margin: 10px 0;">
+                    <p style="font-size: 14px; color: #666; margin-left: 20px;">
                         Raw Score: {data['score']}/{data['total']}
                     </p>
-                    <p style="font-size: 16px; margin: 15px 0;">
-                        <strong>Performance Level:</strong> {performance}
+                    <p style="font-size: 14px; color: #666; margin-left: 20px;">
+                        Performance: <strong>{performance}</strong>
                     </p>
                 </div>
                 
                 <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
-                    <h3 style="color: #92400e; margin-top: 0; font-size: 18px;">⚠️ Important: Complete Test 2 Within 48 Hours</h3>
+                    <h3 style="color: #92400e; margin-top: 0; font-size: 18px;">⏰ Next Step: Complete Test 2</h3>
                     <p style="color: #78350f; margin-bottom: 15px;">
-                        To receive your complete diagnostic report and personalized recommendations, 
-                        please have {data['student_name']} complete the second test within the next <strong>48 hours</strong>.
-                    </p>
-                    <p style="color: #78350f; margin: 0;">
-                        <strong>Test 2:</strong> {data['test_curriculum']} Grade {second_test_grade}
+                        To receive your complete diagnostic report and personalized recommendations, please have <strong>{data['student_name']}</strong> complete the second test within the next <strong>48 hours</strong>.
                     </p>
                 </div>
-                            
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="http://test.schrool.net/schrool-fresher/{data['test_curriculum'].lower( )}-year{second_test_grade}-math-test.html"
                 
-                style="display: inline-block; background-color: #2563eb; color: white; padding: 15px 40px;
-                    text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
-                    
-                    Take Test 2 Now
-                </a>
-            </div>
-
-                
-                
-                <div style="background-color: #e0f2fe; padding: 20px; border-radius: 8px; margin-top: 25px;">
-                    <h3 style="color: #075985; margin-top: 0; font-size: 16px;">What Happens Next?</h3>
+                <div style="background-color: #dbeafe; padding: 20px; border-radius: 8px; border-left: 4px solid #0284c7; margin-bottom: 25px;">
+                    <h3 style="color: #075985; margin-top: 0; font-size: 18px;">What Happens Next?</h3>
                     <p style="color: #0c4a6e; margin-bottom: 10px;">
                         After completing both tests, our team will analyze the results and send you:
                     </p>
@@ -338,11 +312,12 @@ try:
                 </div>
                 
                 <p style="font-size: 14px; color: #666; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
-                    If you have any questions, feel free to reply to this email.
+                    In the meantime, if you'd like to discuss your child's math learning journey, feel free to reply to this email.
                 </p>
                 
                 <p style="font-size: 14px; color: #666;">
-                    Best regards,<br>
+                    Best regards,  
+
                     <strong>Richard & The Schrool Team</strong>
                 </p>
             </div>
@@ -361,7 +336,7 @@ try:
                     "name": data.get('parent_name', 'Parent')
                 }
             ],
-            "subject": f"⏰ {data['student_name']}'s Test Results - Complete 2nd Test Within 48 Hours!",
+            "subject": f"Test 1 Complete - {data['student_name']}'s Diagnostic Results",
             "htmlContent": html_content
         }
         
@@ -381,148 +356,9 @@ try:
     except Exception as e:
         print(f"Error sending first test email: {str(e)}")
         return {'success': False, 'error': str(e)}
-@app.route('/api/diagnostic-test', methods=['POST'])
-def send_diagnostic_test_email():
-    """Send reminder email to complete second diagnostic test"""
-    try:
-        data = request.json
-        
-               # Extract data
-        parent_name = data.get('parent_name', 'Parent')
-        parent_email = data.get('parent_email')
-        student_name = data.get('student_name', 'Your child')
-        test1_country = data.get('test1_country', data.get('country', 'Australia'))
-        test2_country = data.get('test2_country', data.get('country', 'Australia'))
-        first_test_grade = data.get('first_test_grade', '4')
-        second_test_grade = data.get('second_test_grade', '5')
-
-        
-        if not parent_email:
-            return {'success': False, 'error': 'Parent email is required'}
-        
-        # Create HTML email content
-        html_content = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center">
-        <h1 style="color: white; margin: 0; font-size: 28px;">🎓 Reminder: Complete Test 2</h1>
-    </div>
-    
-    <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
-        <p style="font-size: 16px; margin-bottom: 20px;">Dear {parent_name},</p>
-        
-        <p style="font-size: 16px; margin-bottom: 25px;">
-            <strong>{student_name}</strong> has completed the first diagnostic test!
-        </p>
-        
-        <div style="background-color: white; padding: 25px; border-radius: 8px; border-left: 4px solid #667eea; margin-bottom: 25px;">
-             <strong>Test:</strong> {test1_country} Year {first_test_grade}
-
-
-            <p style="font-size: 18px; margin: 10px 0;">
-                <strong>Test:</strong> {test1_country} Year {first_test_grade}
-
-            </p>
-        </div>
-        
-        <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
-            <h3 style="color: #92400e; margin-top: 0; font-size: 18px;">⏰ Important: Complete Test 2 Within 48 Hours</h3>
-            <p style="color: #78350f; margin-bottom: 15px;">
-                To receive your complete diagnostic report and personalized recommendations,
-                please have {student_name} complete the second test within the next <strong>48 hours</strong>.
-                            <strong>Test 2:</strong> {test2_country} Year {second_test_grade}
-
-        </div>
-        
-        <strong>Test 2:</strong> {test2_country} Year {second_test_grade}
-
-            <strong>Test 2:</strong> {test2_country} Year {second_test_grade}
-
-        </p>
-        <a href="http://test.schrool.net/schrool-fresher/{test2_country.lower()}-year{second_test_grade}-math-test.html"
-
-        <a href="http://test.schrool.net/schrool-fresher/{test2_country.lower( )}-year{second_test_grade}-math-test.html"
-
-            <a href="http://test.schrool.net/schrool-fresher/{test2_country.lower( )}-year{second_test_grade}-math-test.html"
-
-               style="display: inline-block; background-color: #2563eb; color: white; padding: 15px 40px;
-                      text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
-                Take Test 2 Now
-            </a>
-        </div>
-        
-        <div style="background-color: #e0f2fe; padding: 20px; border-radius: 8px; border-left: 4px solid #0284c7; margin-bottom: 25px;">
-            <h3 style="color: #075985; margin-top: 0; font-size: 16px;">What Happens Next?</h3>
-            <p style="color: #0c4a6e; margin-bottom: 10px;">
-                After completing both tests, our team will analyze the results and send you:
-            </p>
-            <ul style="color: #0c4a6e; margin: 10px 0; padding-left: 20px;">
-                <li>Detailed analysis of strengths and areas for improvement</li>
-                <li>Personalized learning strategies</li>
-                <li>Recommended resources and activities</li>
-                <li>Tips for supporting your child's math development</li>
-            </ul>
-        </div>
-        
-        <p style="font-size: 14px; color: #666; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
-            If you have any questions, feel free to reply to this email.
-        </p>
-        
-        <p style="font-size: 14px; color: #666;">
-            Best regards,  
-
-            <strong>Richard & The Schrool Team</strong>
-        </p>
-    </div>
-</body>
-</html>
-"""
-        
-        # Prepare Brevo API payload
-        payload = {
-            "sender": {
-                "name": SENDER_NAME,
-                "email": SENDER_EMAIL
-            },
-            "to": [
-                {
-                    "email": parent_email,
-                    "name": parent_name
-                }
-            ],
-            "subject": f"⏰ {student_name}'s Test Results - Complete Test 2 Within 48 Hours!",
-            "htmlContent": html_content
-        }
-        
-        headers = {
-            'accept': 'application/json',
-            'api-key': BREVO_API_KEY,
-            'content-type': 'application/json'
-        }
-        
-        # Send email via Brevo API
-        response = requests.post(BREVO_API_URL, json=payload, headers=headers)
-        
-        if response.status_code == 201:
-            return {'success': True}
-        else:
-            return {'success': False, 'error': response.text}
-            
-    except Exception as e:
-        print(f"Error sending diagnostic test email: {str(e)}")
-        return {'success': False, 'error': str(e)}
-
-
-
-
 
 def send_combined_results_email(data):
-    """Send email with both test results"""
+    """Send combined results email after both tests are completed"""
     try:
         html_content = f"""
         <!DOCTYPE html>
@@ -533,20 +369,20 @@ def send_combined_results_email(data):
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Congratulations!</h1>
+                <h1 style="color: white; margin: 0; font-size: 28px;">🎓 Diagnostic Tests Complete!</h1>
             </div>
             
             <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
                 <p style="font-size: 16px; margin-bottom: 20px;">Dear {data.get('parent_name', 'Parent')},</p>
                 
                 <p style="font-size: 16px; margin-bottom: 25px;">
-                    <strong>{data['student_name']}</strong> has completed both diagnostic tests!
+                    Excellent! <strong>{data['student_name']}</strong> has completed both diagnostic tests. Here are the results:
                 </p>
                 
-                <div style="background-color: #ecfdf5; padding: 25px; border-radius: 8px; border-left: 4px solid #059669; margin-bottom: 25px;">
-                    <h2 style="color: #065f46; margin-top: 0; font-size: 20px;">Complete Results Summary</h2>
+                <div style="background-color: white; padding: 25px; border-radius: 8px; border-left: 4px solid #059669; margin-bottom: 25px;">
+                    <h2 style="color: #1f2937; margin-top: 0; font-size: 20px;">Test Results Summary</h2>
                     
-                    <p style="font-size: 16px; margin: 15px 0;">
+                    <p style="font-size: 16px; margin: 15px 0; margin-top: 20px;">
                         <strong>Test 1:</strong> {data.get('test1_name', 'First Test')} - 
                         <strong style="color: #059669; font-size: 18px;">{data.get('test1_score', 'N/A')}%</strong>
                     </p>
@@ -584,7 +420,8 @@ def send_combined_results_email(data):
                 </p>
                 
                 <p style="font-size: 14px; color: #666;">
-                    Best regards,<br>
+                    Best regards,  
+
                     <strong>Richard & The Schrool Team</strong>
                 </p>
             </div>
@@ -603,7 +440,7 @@ def send_combined_results_email(data):
                     "name": data.get('parent_name', 'Parent')
                 }
             ],
-            "subject": f"Complete Diagnostic Results for {data['student_name']}",
+            "subject": f"Diagnostic Tests Complete - {data['student_name']}'s Results",
             "htmlContent": html_content
         }
         
