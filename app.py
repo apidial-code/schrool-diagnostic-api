@@ -285,19 +285,13 @@ def send_first_test_email(data):
         performance = get_performance_level(percentage)
         color = performance['color']
         
-        # Calculate second test grade using universal formula
-        # If student took (current_year - 2), next test is (current_year - 1)
-        # If student took (current_year - 1), next test is (current_year - 2)
-        current_year = int(data['school_grade'])
-        test1_grade = int(data['test_grade'])
-        
-        if test1_grade == current_year - 2:
-            second_test_grade = str(current_year - 1)
-        elif test1_grade == current_year - 1:
-            second_test_grade = str(current_year - 2)
+        # Use the pre-calculated next test grade from the endpoint
+        # The formula has already been applied before this function is called
+        if 'next_test_grade' in data:
+            second_test_grade = str(data['next_test_grade'])
         else:
-            # Fallback (shouldn't happen with proper validation)
-            second_test_grade = str(current_year - 1)
+            # Fallback if not provided (shouldn't happen)
+            second_test_grade = str(int(data['test_grade']) + 1)
         
         html_content = f"""
         <!DOCTYPE html>
@@ -622,10 +616,27 @@ def submit_test():
         is_first_test = data.get('is_first_test', True)
         
         if is_first_test:
+            # FIRST: Apply formula to determine next test grade
+            # This is the "gauge" the email function needs
+            if 'school_grade' in data and data['school_grade']:
+                current_year = int(data['school_grade'])
+                test1_grade = int(data['test_grade'])
+                
+                if test1_grade == current_year - 2:
+                    next_test_grade = current_year - 1
+                elif test1_grade == current_year - 1:
+                    next_test_grade = current_year - 2
+                else:
+                    # Fallback
+                    next_test_grade = current_year - 1
+                
+                # Add the calculated next test to data
+                data['next_test_grade'] = next_test_grade
+            
             # Store first test results in database
             store_first_test(student_key, data)
             
-            # Send first test email
+            # Send first test email with pre-calculated next test
             result = send_first_test_email(data)
             
             if result.get('success'):
