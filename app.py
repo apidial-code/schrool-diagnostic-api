@@ -240,6 +240,17 @@ def get_performance_level(percentage):
 
 def send_email_via_brevo(to_email, to_name, subject, html_content):
     """Send email via Brevo API"""
+    def send_email_via_brevo(to_email, to_name, subject, html_content):
+    """Send email via Brevo API"""
+    
+    # Check if BREVO_API_KEY is set
+    if not BREVO_API_KEY:
+        print("ERROR: BREVO_API_KEY is not set!")
+        return {'success': False, 'error': 'BREVO_API_KEY not configured'}
+    
+    try:
+        # ... rest of the code
+
     try:
         payload = {
             'sender': {
