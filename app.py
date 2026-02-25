@@ -670,14 +670,11 @@ def submit_test():
             
             if result.get('success'):
                 # Send 72-hour follow-up email
-                # Debug: Print the data before sending followup email
-                print(f"DEBUG: test1_score = {data.get('test1_score')}, test2_score = {data.get('test2_score')}")
-
             send_followup_email(data)
 
-            
+           
 
-                
+                   
                 # Clean up stored results after sending combined email
                 cleanup_test_data(student_key)
                 
