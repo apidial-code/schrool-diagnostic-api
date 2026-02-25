@@ -670,10 +670,8 @@ def submit_test():
             
             if result.get('success'):
                 # Send 72-hour follow-up email
-                # Send 72-hour follow-up email with personalized analysis
-                followup_result = send_followup_email(data)
-            if not followup_result.get('success'):
-                print(f"Warning: Failed to send followup email: {followup_result.get('error')}")
+                send_followup_email(data)
+            
 
                 
                 # Clean up stored results after sending combined email
