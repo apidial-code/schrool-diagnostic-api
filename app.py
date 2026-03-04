@@ -174,7 +174,7 @@ def store_second_test(student_key, data):
             'student_name': row['student_name']
             }
 
-            }
+}
         else:
             # First test data not found, return defaults
             return {
