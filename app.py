@@ -172,7 +172,7 @@ def store_second_test(student_key, data):
             'test1_raw': row['test1_raw'],
             'parent_name': row['parent_name'],
             'student_name': row['student_name']
-}
+            }
 
             }
         else:
