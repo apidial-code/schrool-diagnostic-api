@@ -553,7 +553,7 @@ def send_followup_email(data):
         </html>
         """
         
-        subject = f"📊 Personalized Analysis for {data['student_name']}"
+        subject = f"📊 Personalized Analysis for {data.get('student_name', 'Student')}"
         return send_email_via_brevo(data['parent_email'], data.get('parent_name', 'Parent'), subject, html_content)
         
     except Exception as e:
