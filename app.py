@@ -166,11 +166,14 @@ def store_second_test(student_key, data):
                 student_key
             ))
             
-            return {
-                'test1_name': row['test1_name'],
-                'test1_score': row['test1_score'],
-                'test1_raw': row['test1_raw'],
-                'parent_name': row['parent_name']
+        return {
+            'test1_name': row['test1_name'],
+            'test1_score': row['test1_score'],
+            'test1_raw': row['test1_raw'],
+            'parent_name': row['parent_name'],
+            'student_name': row['student_name']
+}
+
             }
         else:
             # First test data not found, return defaults
@@ -656,14 +659,15 @@ def submit_test():
             # Retrieve first test results from database
             first_test = store_second_test(student_key, data)
             
-            # Add both test scores to data
-            data['test1_name'] = first_test['student_name']
+            data['test1_name'] = first_test['test1_name']
             data['test1_score'] = first_test['test1_score'] if first_test['test1_score'] is not None else 'N/A'
             data['test1_raw'] = first_test['test1_raw']
             data['test2_name'] = f"{data['test_curriculum']} Grade {data['test_grade']}"
             data['test2_score'] = data['percentage']
             data['test2_raw'] = f"{data['score']}/{data['total']}"
             data['parent_name'] = first_test['parent_name']
+            data['student_name'] = first_test['student_name']
+
             
             # Send combined results email
             result = send_combined_results_email(data)
