@@ -141,7 +141,7 @@ def store_second_test(student_key, data):
     with get_db() as conn:
         # Retrieve first test data
         cursor = conn.execute('''
-            SELECT test1_name, test1_score, test1_raw, parent_name
+            SELECT student_name, test1_score, test1_raw, parent_name
             FROM test_results
             WHERE student_key = ?
         ''', (student_key,))
@@ -657,7 +657,7 @@ def submit_test():
             first_test = store_second_test(student_key, data)
             
             # Add both test scores to data
-            data['test1_name'] = first_test['test1_name']
+            data['test1_name'] = first_test['student_name']
             data['test1_score'] = first_test['test1_score'] if first_test['test1_score'] is not None else 'N/A'
             data['test1_raw'] = first_test['test1_raw']
             data['test2_name'] = f"{data['test_curriculum']} Grade {data['test_grade']}"
