@@ -54,58 +54,110 @@ def submit_test():
         "total": 25,
         "percentage": 72,
         "time_used": 1800,
-        "is_first_test": true
+       @app.route('/api/submit-test', methods=['POST'])
+def submit_test():
+    """
+    Handle test submission and send results email
+
+    Expected JSON:
+    {
+        "parent_name": "John Doe",
+        "parent_email": "john@example.com",
+        "student_name": "Jane Doe",
+        "school_grade": "6",
+        "test_curriculum": "Australia",
+        "test_grade": "5",
+        "score": 18,
+        "total": 25,
+        "percentage": 72,
+        "time_used": 1800
     }
     """
     try:
         data = request.json
-        
+
         # Validate required fields
-        required_fields = ['parent_email', 'student_name', 'test_curriculum', 
-                          'test_grade', 'score', 'total', 'percentage']
-        
+        required_fields = [
+            'parent_email',
+            'student_name',
+            'school_grade',
+            'test_curriculum',
+            'test_grade',
+            'score',
+            'total',
+            'percentage'
+        ]
+
         for field in required_fields:
             if field not in data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
-        
-        # Create unique key for this student (email + student name)
+
+        # Normalize values
+        student_year = int(data['school_grade'])
+        test_year = int(data['test_grade'])
+        difference = student_year - test_year
+
+        # Only year-1 and year-2 tests are valid
+        if difference not in [1, 2]:
+            return jsonify({
+                'error': f'Invalid test year selected. Student year is {student_year}, test year is {test_year}. Expected {student_year - 1} or {student_year - 2}.'
+            }), 400
+
+        # Create unique key for this student
         student_key = f"{data['parent_email']}_{data['student_name']}".lower().replace(' ', '_')
-        
-        # Send appropriate email
-        if data.get('is_first_test', True):
-            # Store first test results
+
+        # Determine the other test automatically
+        if difference == 1:
+            # Student took Y-1 first, so remaining test is Y-2
+            remaining_test_year = student_year - 2
+        else:
+            # Student took Y-2 first, so remaining test is Y-1
+            remaining_test_year = student_year - 1
+
+        # Check whether first test already exists in storage
+        first_test_exists = student_key in test_results_storage
+
+        if not first_test_exists:
+            # FIRST TEST
             test_results_storage[student_key] = {
-                'test1_name': f"{data['test_curriculum']} Grade {data['test_grade']}",
+                'test1_name': f"{data['test_curriculum']} Year {data['test_grade']}",
                 'test1_score': data['percentage'],
                 'test1_raw': f"{data['score']}/{data['total']}",
+                'test1_year': test_year,
+                'remaining_test_year': remaining_test_year,
                 'timestamp': datetime.now().isoformat(),
                 'parent_name': data.get('parent_name', 'Parent'),
                 'student_name': data['student_name']
             }
+
+            # Add next test year into payload for email template
+            data['next_test_grade'] = remaining_test_year
+
             result = send_first_test_email(data)
+
         else:
-            # Retrieve first test results and combine with second test
+            # SECOND TEST
             first_test = test_results_storage.get(student_key, {})
-            
-            # Add both test scores to data
+
             data['test1_name'] = first_test.get('test1_name', 'First Test')
             data['test1_score'] = first_test.get('test1_score', 'N/A')
             data['test1_raw'] = first_test.get('test1_raw', 'N/A')
-            data['test2_name'] = f"{data['test_curriculum']} Grade {data['test_grade']}"
+
+            data['test2_name'] = f"{data['test_curriculum']} Year {data['test_grade']}"
             data['test2_score'] = data['percentage']
             data['test2_raw'] = f"{data['score']}/{data['total']}"
-            
+
             result = send_combined_results_email(data)
-            
-            # Clean up stored results after sending combined email
+
+            # Clean up after combined email
             if student_key in test_results_storage:
                 del test_results_storage[student_key]
-        
+
         if result.get('success'):
             return jsonify(result), 200
         else:
             return jsonify(result), 500
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
