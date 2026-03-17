@@ -163,13 +163,35 @@ def submit_test():
             # SECOND TEST
             first_test = test_results_storage.get(student_key, {})
 
-            data["test1_name"] = first_test.get("test1_name", "First Test")
-            data["test1_score"] = first_test.get("test1_score", "N/A")
-            data["test1_raw"] = first_test.get("test1_raw", "N/A")
+            first_test_year = first_test.get('test1_year')
+            expected_second_year = first_test.get('remaining_test_year')
 
-            data["test2_name"] = f"{data['test_curriculum']} Year {data['test_grade']}"
-            data["test2_score"] = data["percentage"]
-            data["test2_raw"] = f"{data['score']}/{data['total']}"
+            # Reject duplicate submission of the same first test
+            if test_year == first_test_year:
+                return jsonify({
+                    'error': (
+                        f"Duplicate test submission detected. "
+                        f"The first completed test was Year {first_test_year}. "
+                        f"The required second test is Year {expected_second_year}."
+                    )
+                }), 400
+
+            # Reject any second submission that is not the required remaining year
+            if test_year != expected_second_year:
+                return jsonify({
+                    'error': (
+                        f"Incorrect second test submitted. "
+                        f"Expected Year {expected_second_year}, but received Year {test_year}."
+                    )
+                }), 400
+
+            data['test1_name'] = first_test.get('test1_name', 'First Test')
+            data['test1_score'] = first_test.get('test1_score', 'N/A')
+            data['test1_raw'] = first_test.get('test1_raw', 'N/A')
+
+            data['test2_name'] = f"{data['test_curriculum']} Year {data['test_grade']}"
+            data['test2_score'] = data['percentage']
+            data['test2_raw'] = f"{data['score']}/{data['total']}"
 
             result = send_combined_results_email(data)
 
