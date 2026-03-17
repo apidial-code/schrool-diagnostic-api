@@ -231,7 +231,7 @@ def send_brevo_email(to_email, to_name, subject, html_content):
 
 
 def send_first_test_email(data):
-    """Send email with first test results and link to second test"""
+    """Send email with first test results and direct link to the exact second test"""
     try:
         # Extract first name only from student_name
         student_full_name = data["student_name"]
@@ -241,9 +241,11 @@ def send_first_test_email(data):
         deadline = datetime.now() + timedelta(hours=48)
         deadline_str = deadline.strftime("%A, %B %d at %I:%M %p")
 
-        # Get base URL from environment or request
-        base_url = os.environ.get("FRONTEND_URL", "https://test.schrool.net")
-        second_test_link = f"{base_url}/schrool-fresher/index.html#grade-selection"
+        # Build exact second-test link
+        base_url = os.environ.get("FRONTEND_URL", "https://test.schrool.net").rstrip("/")
+        curriculum_slug = data["test_curriculum"].strip().lower()
+        next_test_grade = int(data["next_test_grade"])
+        second_test_link = f"{base_url}/schrool-fresher/{curriculum_slug}-year{next_test_grade}-math-test.html"
 
         # Email body
         interpretation = get_interpretation(data["percentage"])
@@ -256,11 +258,11 @@ def send_first_test_email(data):
 
                 <p>Dear {data.get('parent_name', 'Parent')},</p>
 
-                <p>Thank you for completing the first diagnostic test for {student_first_name}!</p>
+                <p>Thank you for completing the first diagnostic test for {student_first_name}.</p>
 
                 <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3 style="margin-top: 0;">Test Results</h3>
-                    <p><strong>Test:</strong> {data['test_curriculum']} Grade {data['test_grade']}</p>
+                    <h3 style="margin-top: 0;">First Test Results</h3>
+                    <p><strong>Completed test:</strong> {data['test_curriculum']} Year {data['test_grade']}</p>
                     <p><strong>Score:</strong> {data['score']} out of {data['total']} ({data['percentage']}%)</p>
                 </div>
 
@@ -270,16 +272,17 @@ def send_first_test_email(data):
                 </div>
 
                 <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3 style="margin-top: 0;">Next Steps</h3>
-                    <p>We'll wait for the second test to be completed before providing a full diagnosis of your child's math situation.</p>
+                    <h3 style="margin-top: 0;">Next Test to Complete</h3>
+                    <p><strong>{data['test_curriculum']} Year {next_test_grade}</strong></p>
+                    <p>Please complete this second test within 48 hours so we can provide a full diagnosis of your child's math situation.</p>
                     <p style="margin-top: 15px;">
                         <a href="{second_test_link}"
                            style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                            Take Second Test Now
+                            Take {data['test_curriculum']} Year {next_test_grade} Test Now
                         </a>
                     </p>
                     <p style="font-size: 16px; color: #dc2626; font-weight: bold; margin-top: 15px;">
-                        ⏰ Complete the second test within 48 hours!
+                        ⏰ Complete the second test within 48 hours
                     </p>
                     <p style="font-size: 14px; color: #666; margin-top: 5px;">
                         Link expires: <strong>{deadline_str}</strong>
@@ -301,7 +304,7 @@ def send_first_test_email(data):
         </html>
         """
 
-        subject = f"⏰ {student_first_name}'s Test Results - Complete 2nd Test Within 48 Hours!"
+        subject = f"⏰ {student_first_name}'s Results: Complete {data['test_curriculum']} Year {next_test_grade} Within 48 Hours"
         to_name = data.get("parent_name", "Parent")
 
         return send_brevo_email(data["parent_email"], to_name, subject, html_content)
