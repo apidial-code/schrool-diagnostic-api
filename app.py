@@ -45,6 +45,9 @@ SENDER_NAME = os.environ.get("SENDER_NAME", "Schrool Diagnostics")
 # In production, use a database like PostgreSQL or Redis
 test_results_storage = {}
 
+import secrets
+
+continuation_tokens = {}
 
 @app.route("/")
 def home():
@@ -206,6 +209,32 @@ def submit_test():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+    @app.route("/api/continue", methods=["GET"])
+    def continue_test():
+        try:
+            token = request.args.get("token")
+
+            if not token or token not in continuation_tokens:
+            return jsonify({"success": False, "error": "Invalid token"}), 400
+
+            record = continuation_tokens[token]
+
+            expires_at = datetime.fromisoformat(record["expires_at"])
+            if datetime.now() > expires_at:
+            del continuation_tokens[token]
+            return jsonify({"success": False, "error": "Token expired"}), 400
+
+            return jsonify({
+            "success": True,
+            "parent_email": record["parent_email"],
+            "parent_name": record["parent_name"],
+            "student_name": record["student_name"],
+            "test_curriculum": record["test_curriculum"],
+            "expected_second_year": record["expected_second_year"]
+            }), 200
+
+        except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 def send_brevo_email(to_email, to_name, subject, html_content):
     """
@@ -265,9 +294,30 @@ def send_first_test_email(data):
 
         # Build exact second-test link
         base_url = os.environ.get("FRONTEND_URL", "https://test.schrool.net").rstrip("/")
+
+        # Generate secure continuation token
+        token = secrets.token_urlsafe(24)
+
+        # Store continuation data for the emailed second-test flow
+        continuation_tokens[token] = {
+            "student_key": f"{data['parent_email']}_{data['student_name']}".lower().replace(" ", "_"),
+            "parent_email": data["parent_email"],
+            "parent_name": data.get("parent_name", "Parent"),
+            "student_name": data["student_name"],
+            "test_curriculum": data["test_curriculum"],
+            "first_test_year": int(data["test_grade"]),
+            "expected_second_year": int(data["next_test_grade"]),
+            "expires_at": (datetime.now() + timedelta(hours=48)).isoformat()
+}
+
         curriculum_slug = data["test_curriculum"].strip().lower()
         next_test_grade = int(data["next_test_grade"])
-        second_test_link = f"{base_url}/schrool-fresher/{curriculum_slug}-year{next_test_grade}-math-test.html"
+
+        second_test_link = (
+            f"{base_url}/schrool-fresher/"
+            f"{curriculum_slug}-year{next_test_grade}-math-test.html"
+            f"?token={token}"
+        )
 
         # Email body
         interpretation = get_interpretation(data["percentage"])
