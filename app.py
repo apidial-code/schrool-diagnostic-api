@@ -52,21 +52,19 @@ continuation_tokens = {}
 @app.route("/")
 def home():
     """Health check endpoint"""
-    return jsonify(
-        {
-            "status": "running",
-            "service": "Schrool Diagnostic Tests API",
-            "version": "1.4-TOKEN-CONTINUE",
-            "email_service": "Brevo",
-            "fixes": [
-                "Explicit CORS allowlist for Schrool frontend domains",
-                "OPTIONS preflight handling for /api/submit-test",
-                "Clean route definition",
-                "Combined results email logic preserved",
-            ],
-            "routes": [str(rule) for rule in app.url_map.iter_rules()],
-        })
-    )
+return jsonify({
+    "status": "running",
+    "service": "Schrool Diagnostic Tests API",
+    "version": "1.4-TOKEN-CONTINUE",
+    "email_service": "Brevo",
+    "fixes": [
+        "Explicit CORS allowlist for Schrool frontend domains",
+        "OPTIONS preflight handling for /api/submit-test",
+        "Clean route definition",
+        "Combined results email logic preserved"
+    ],
+    "routes": [str(rule) for rule in app.url_map.iter_rules()]
+})
 
 
 @app.route("/api/submit-test", methods=["POST", "OPTIONS"])
