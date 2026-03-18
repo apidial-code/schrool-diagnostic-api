@@ -64,7 +64,8 @@ def home():
                 "Clean route definition",
                 "Combined results email logic preserved",
             ],
-        }
+            "routes": [str(rule) for rule in app.url_map.iter_rules()],
+        })
     )
 
 
