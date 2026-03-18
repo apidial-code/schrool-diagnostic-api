@@ -56,7 +56,7 @@ def home():
         {
             "status": "running",
             "service": "Schrool Diagnostic Tests API",
-            "version": "1.3-CORS-FIXED",
+            "version": "1.4-TOKEN-CONTINUE",
             "email_service": "Brevo",
             "fixes": [
                 "Explicit CORS allowlist for Schrool frontend domains",
