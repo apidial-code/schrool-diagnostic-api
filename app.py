@@ -52,7 +52,7 @@ continuation_tokens = {}
 @app.route("/")
 def home():
     """Health check endpoint"""
-return jsonify({
+    return jsonify({
     "status": "running",
     "service": "Schrool Diagnostic Tests API",
     "version": "1.4-TOKEN-CONTINUE",
