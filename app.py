@@ -215,26 +215,26 @@ def submit_test():
             token = request.args.get("token")
 
             if not token or token not in continuation_tokens:
-            return jsonify({"success": False, "error": "Invalid token"}), 400
+                return jsonify({"success": False, "error": "Invalid token"}), 400
 
             record = continuation_tokens[token]
 
             expires_at = datetime.fromisoformat(record["expires_at"])
             if datetime.now() > expires_at:
-            del continuation_tokens[token]
-            return jsonify({"success": False, "error": "Token expired"}), 400
+                del continuation_tokens[token]
+                return jsonify({"success": False, "error": "Token expired"}), 400
 
             return jsonify({
-            "success": True,
-            "parent_email": record["parent_email"],
-            "parent_name": record["parent_name"],
-            "student_name": record["student_name"],
-            "test_curriculum": record["test_curriculum"],
-            "expected_second_year": record["expected_second_year"]
+                "success": True,
+                "parent_email": record["parent_email"],
+                "parent_name": record["parent_name"],
+                "student_name": record["student_name"],
+                "test_curriculum": record["test_curriculum"],
+                "expected_second_year": record["expected_second_year"]
             }), 200
 
         except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+            return jsonify({"success": False, "error": str(e)}), 500
 
 def send_brevo_email(to_email, to_name, subject, html_content):
     """
