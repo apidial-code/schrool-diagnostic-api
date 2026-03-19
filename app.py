@@ -1,12 +1,13 @@
 """
-Schrool Diagnostic Tests Backend
-Flask API for handling test submissions and email notifications using Brevo
+Schrool Diagnostic Tests Backend - Final Clean Production Version
 
-FIXED VERSION
+Features:
+- Brevo email delivery
 - Explicit CORS allowlist for Schrool frontend domains
-- Proper OPTIONS preflight handling for /api/submit-test
-- Cleaned route definition and removed duplicated/corrupted block
-- Preserves first-test / second-test email logic
+- SQLite persistence for first/second test flow
+- Tokenized continuation links for emailed second-test path
+- /api/continue endpoint for restoring student/session identity
+- First test email, combined results email, and follow-up email
 """
 
 from flask import Flask, request, jsonify
@@ -14,231 +15,285 @@ from flask_cors import CORS
 import os
 from datetime import datetime, timedelta
 import requests
+import sqlite3
+import secrets
+from contextlib import contextmanager
+
+# ============================================================================
+# FLASK APP INITIALIZATION
+# ============================================================================
 
 app = Flask(__name__)
 
-# Explicit CORS configuration for frontend requests
 CORS(
     app,
     resources={
         r"/api/*": {
             "origins": [
                 "https://test.schrool.net",
-                "https://schrool.com",
+                "https://schrool.net",
                 "https://www.schrool.com",
+                "https://schrool.com",
+                "http://localhost:3000",
             ]
         }
     },
+    supports_credentials=True,
     methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
-# Brevo API Key (set in Heroku environment variables)
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+
 BREVO_API_KEY = os.environ.get("BREVO_API_KEY")
 BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
-# Sender email (must be verified in Brevo)
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "diagnostics@schrool.com")
 SENDER_NAME = os.environ.get("SENDER_NAME", "Schrool Diagnostics")
 
-# In-memory storage for test results (temporary solution)
-# In production, use a database like PostgreSQL or Redis
-test_results_storage = {}
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://test.schrool.net").rstrip("/")
 
-import secrets
+DATABASE_PATH = os.environ.get("DATABASE_PATH", "/tmp/test_results.db")
 
+# In-memory token store for continuation links
 continuation_tokens = {}
+
+# ============================================================================
+# DATABASE MANAGEMENT
+# ============================================================================
+
+@contextmanager
+def get_db():
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def init_database():
+    with get_db() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS test_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_key TEXT UNIQUE NOT NULL,
+                parent_email TEXT NOT NULL,
+                parent_name TEXT,
+                student_name TEXT NOT NULL,
+                school_grade TEXT,
+                test_curriculum TEXT,
+                test1_name TEXT,
+                test1_score INTEGER,
+                test1_raw TEXT,
+                test1_year INTEGER,
+                expected_second_year INTEGER,
+                test2_name TEXT,
+                test2_score INTEGER,
+                test2_raw TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_student_key
+            ON test_results(student_key)
+            """
+        )
+
+        seven_days_ago = (datetime.now() - timedelta(days=7)).isoformat()
+        conn.execute(
+            """
+            DELETE FROM test_results
+            WHERE created_at < ?
+            """,
+            (seven_days_ago,),
+        )
+
+
+init_database()
+
+# ============================================================================
+# DATABASE OPERATIONS
+# ============================================================================
+
+def store_first_test(student_key, data, expected_second_year):
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO test_results (
+                student_key, parent_email, parent_name, student_name,
+                school_grade, test_curriculum,
+                test1_name, test1_score, test1_raw, test1_year, expected_second_year,
+                created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                student_key,
+                data["parent_email"],
+                data.get("parent_name", "Parent"),
+                data["student_name"],
+                str(data.get("school_grade", "")),
+                data["test_curriculum"],
+                f"{data['test_curriculum']} Year {data['test_grade']}",
+                int(data["percentage"]),
+                f"{data['score']}/{data['total']}",
+                int(data["test_grade"]),
+                int(expected_second_year),
+                now,
+                now,
+            ),
+        )
+
+
+def get_first_test(student_key):
+    with get_db() as conn:
+        cursor = conn.execute(
+            """
+            SELECT *
+            FROM test_results
+            WHERE student_key = ?
+            """,
+            (student_key,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def store_second_test(student_key, data):
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        conn.execute(
+            """
+            UPDATE test_results
+            SET test2_name = ?,
+                test2_score = ?,
+                test2_raw = ?,
+                updated_at = ?
+            WHERE student_key = ?
+            """,
+            (
+                f"{data['test_curriculum']} Year {data['test_grade']}",
+                int(data["percentage"]),
+                f"{data['score']}/{data['total']}",
+                now,
+                student_key,
+            ),
+        )
+
+
+def cleanup_test_data(student_key):
+    with get_db() as conn:
+        conn.execute(
+            """
+            DELETE FROM test_results
+            WHERE student_key = ?
+            """,
+            (student_key,),
+        )
+
+# ============================================================================
+# HELPERS
+# ============================================================================
+
+def normalize_student_key(parent_email, student_name):
+    return f"{parent_email}_{student_name}".lower().replace(" ", "_")
+
+
+def calculate_expected_second_year(student_year, first_test_year):
+    difference = student_year - first_test_year
+    if difference == 1:
+        return student_year - 2
+    if difference == 2:
+        return student_year - 1
+    return None
+
+
+def get_interpretation(percentage):
+    if percentage >= 90:
+        return "Excellent! Your child demonstrates strong mastery of the concepts at this grade level."
+    if percentage >= 75:
+        return "Good performance! Your child has a solid understanding with some areas for improvement."
+    if percentage >= 60:
+        return "Fair performance. Your child understands basic concepts but needs support in several areas."
+    if percentage >= 40:
+        return "Your child is struggling with many concepts at this level and would benefit from targeted support."
+    return "Your child needs significant support. Consider working with a tutor to build foundational skills."
+
+
+def get_performance_level(percentage):
+    if percentage >= 75:
+        return {"level": "Strong", "color": "#059669", "description": "Excellent performance"}
+    if percentage >= 60:
+        return {"level": "Satisfactory", "color": "#2563eb", "description": "Good performance"}
+    if percentage >= 40:
+        return {"level": "Needs Improvement", "color": "#d97706", "description": "Needs more practice"}
+    return {"level": "Requires Support", "color": "#dc2626", "description": "Requires immediate support"}
+
+# ============================================================================
+# HEALTH CHECK
+# ============================================================================
 
 @app.route("/")
 def home():
-    """Health check endpoint"""
     return jsonify({
-    "status": "running",
-    "service": "Schrool Diagnostic Tests API",
-    "version": "1.4-TOKEN-CONTINUE",
-    "email_service": "Brevo",
-    "fixes": [
-        "Explicit CORS allowlist for Schrool frontend domains",
-        "OPTIONS preflight handling for /api/submit-test",
-        "Clean route definition",
-        "Combined results email logic preserved"
-    ],
-    "routes": [str(rule) for rule in app.url_map.iter_rules()]
-})
+        "status": "running",
+        "service": "Schrool Diagnostic Tests API",
+        "version": "3.0-TOKEN-FINAL",
+        "email_service": "Brevo",
+        "storage": "SQLite Database",
+        "routes": [str(rule) for rule in app.url_map.iter_rules()],
+        "timestamp": datetime.now().isoformat(),
+    }), 200
 
+# ============================================================================
+# CONTINUATION TOKEN ENDPOINT
+# ============================================================================
 
-@app.route("/api/submit-test", methods=["POST", "OPTIONS"])
-def submit_test():
-    """
-    Handle test submission and send results email.
-
-    Expected JSON:
-    {
-        "parent_name": "John Doe",
-        "parent_email": "john@example.com",
-        "student_name": "Jane Doe",
-        "school_grade": "6",
-        "test_curriculum": "Australia",
-        "test_grade": "5",
-        "score": 18,
-        "total": 25,
-        "percentage": 72,
-        "time_used": 1800
-    }
-    """
-    # Explicit preflight handling
-    if request.method == "OPTIONS":
-        return ("", 204)
-
+@app.route("/api/continue", methods=["GET"])
+def continue_test():
     try:
-        data = request.get_json(silent=True) or {}
+        token = request.args.get("token")
 
-        # Validate required fields
-        required_fields = [
-            "parent_email",
-            "student_name",
-            "school_grade",
-            "test_curriculum",
-            "test_grade",
-            "score",
-            "total",
-            "percentage",
-        ]
+        if not token or token not in continuation_tokens:
+            return jsonify({"success": False, "error": "Invalid token"}), 400
 
-        for field in required_fields:
-            if field not in data or data[field] in (None, ""):
-                return jsonify({"error": f"Missing required field: {field}"}), 400
+        record = continuation_tokens[token]
 
-        # Normalize values
-        student_year = int(data["school_grade"])
-        test_year = int(data["test_grade"])
-        difference = student_year - test_year
+        expires_at = datetime.fromisoformat(record["expires_at"])
+        if datetime.now() > expires_at:
+            del continuation_tokens[token]
+            return jsonify({"success": False, "error": "Token expired"}), 400
 
-        # Only year-1 and year-2 tests are valid
-        if difference not in [1, 2]:
-            return (
-                jsonify(
-                    {
-                        "error": (
-                            f"Invalid test year selected. Student year is {student_year}, "
-                            f"test year is {test_year}. Expected {student_year - 1} "
-                            f"or {student_year - 2}."
-                        )
-                    }
-                ),
-                400,
-            )
-
-        # Create unique key for this student
-        student_key = f"{data['parent_email']}_{data['student_name']}".lower().replace(" ", "_")
-
-        # Determine the other test automatically
-        if difference == 1:
-            # Student took Y-1 first, so remaining test is Y-2
-            remaining_test_year = student_year - 2
-        else:
-            # Student took Y-2 first, so remaining test is Y-1
-            remaining_test_year = student_year - 1
-
-        # Check whether first test already exists in storage
-        first_test_exists = student_key in test_results_storage
-
-        if not first_test_exists:
-            # FIRST TEST
-            test_results_storage[student_key] = {
-                "test1_name": f"{data['test_curriculum']} Year {data['test_grade']}",
-                "test1_score": data["percentage"],
-                "test1_raw": f"{data['score']}/{data['total']}",
-                "test1_year": test_year,
-                "remaining_test_year": remaining_test_year,
-                "timestamp": datetime.now().isoformat(),
-                "parent_name": data.get("parent_name", "Parent"),
-                "student_name": data["student_name"],
-            }
-
-            # Add next test year into payload for email template
-            data["next_test_grade"] = remaining_test_year
-
-            result = send_first_test_email(data)
-
-        else:
-            # SECOND TEST
-            first_test = test_results_storage.get(student_key, {})
-
-            first_test_year = first_test.get('test1_year')
-            expected_second_year = first_test.get('remaining_test_year')
-
-            # Reject duplicate submission of the same first test
-            if test_year == first_test_year:
-                return jsonify({
-                    'error': (
-                        f"Duplicate test submission detected. "
-                        f"The first completed test was Year {first_test_year}. "
-                        f"The required second test is Year {expected_second_year}."
-                    )
-                }), 400
-
-            # Reject any second submission that is not the required remaining year
-            if test_year != expected_second_year:
-                return jsonify({
-                    'error': (
-                        f"Incorrect second test submitted. "
-                        f"Expected Year {expected_second_year}, but received Year {test_year}."
-                    )
-                }), 400
-
-            data['test1_name'] = first_test.get('test1_name', 'First Test')
-            data['test1_score'] = first_test.get('test1_score', 'N/A')
-            data['test1_raw'] = first_test.get('test1_raw', 'N/A')
-
-            data['test2_name'] = f"{data['test_curriculum']} Year {data['test_grade']}"
-            data['test2_score'] = data['percentage']
-            data['test2_raw'] = f"{data['score']}/{data['total']}"
-
-            result = send_combined_results_email(data)
-
-            # Clean up after combined email
-            if student_key in test_results_storage:
-                del test_results_storage[student_key]
-
-        if result.get("success"):
-            return jsonify(result), 200
-        return jsonify(result), 500
+        return jsonify({
+            "success": True,
+            "parent_email": record["parent_email"],
+            "parent_name": record["parent_name"],
+            "student_name": record["student_name"],
+            "test_curriculum": record["test_curriculum"],
+            "expected_second_year": record["expected_second_year"],
+        }), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 500
 
-    @app.route("/api/continue", methods=["GET"])
-    def continue_test():
-        try:
-            token = request.args.get("token")
-
-            if not token or token not in continuation_tokens:
-                return jsonify({"success": False, "error": "Invalid token"}), 400
-
-            record = continuation_tokens[token]
-
-            expires_at = datetime.fromisoformat(record["expires_at"])
-            if datetime.now() > expires_at:
-                del continuation_tokens[token]
-                return jsonify({"success": False, "error": "Token expired"}), 400
-
-            return jsonify({
-                "success": True,
-                "parent_email": record["parent_email"],
-                "parent_name": record["parent_name"],
-                "student_name": record["student_name"],
-                "test_curriculum": record["test_curriculum"],
-                "expected_second_year": record["expected_second_year"]
-            }), 200
-
-        except Exception as e:
-            return jsonify({"success": False, "error": str(e)}), 500
+# ============================================================================
+# EMAIL DELIVERY
+# ============================================================================
 
 def send_brevo_email(to_email, to_name, subject, html_content):
-    """
-    Send email using Brevo API
-    """
     try:
         if not BREVO_API_KEY:
             return {
@@ -246,27 +301,31 @@ def send_brevo_email(to_email, to_name, subject, html_content):
                 "error": "BREVO_API_KEY is not set in environment variables",
             }
 
+        payload = {
+            "sender": {
+                "name": SENDER_NAME,
+                "email": SENDER_EMAIL,
+            },
+            "to": [
+                {
+                    "email": to_email,
+                    "name": to_name,
+                }
+            ],
+            "subject": subject,
+            "htmlContent": html_content,
+        }
+
         headers = {
             "accept": "application/json",
             "api-key": BREVO_API_KEY,
             "content-type": "application/json",
         }
 
-        payload = {
-            "sender": {"name": SENDER_NAME, "email": SENDER_EMAIL},
-            "to": [{"email": to_email, "name": to_name}],
-            "subject": subject,
-            "htmlContent": html_content,
-        }
-
         response = requests.post(BREVO_API_URL, json=payload, headers=headers, timeout=20)
 
         if response.status_code in [200, 201]:
-            return {
-                "success": True,
-                "message": "Email sent successfully",
-                "email": to_email,
-            }
+            return {"success": True, "message": "Email sent successfully", "email": to_email}
 
         return {
             "success": False,
@@ -274,101 +333,85 @@ def send_brevo_email(to_email, to_name, subject, html_content):
         }
 
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Failed to send email: {str(e)}",
-        }
+        return {"success": False, "error": f"Failed to send email: {str(e)}"}
 
+# ============================================================================
+# EMAIL TEMPLATES
+# ============================================================================
 
 def send_first_test_email(data):
-    """Send email with first test results and direct link to the exact second test"""
     try:
-        # Extract first name only from student_name
         student_full_name = data["student_name"]
         student_first_name = student_full_name.split()[0] if student_full_name else "Student"
 
-        # Calculate 48-hour deadline
         deadline = datetime.now() + timedelta(hours=48)
         deadline_str = deadline.strftime("%A, %B %d at %I:%M %p")
 
-        # Build exact second-test link
-        base_url = os.environ.get("FRONTEND_URL", "https://test.schrool.net").rstrip("/")
-
-        # Generate secure continuation token
         token = secrets.token_urlsafe(24)
 
-        # Store continuation data for the emailed second-test flow
         continuation_tokens[token] = {
-            "student_key": f"{data['parent_email']}_{data['student_name']}".lower().replace(" ", "_"),
+            "student_key": normalize_student_key(data["parent_email"], data["student_name"]),
             "parent_email": data["parent_email"],
             "parent_name": data.get("parent_name", "Parent"),
             "student_name": data["student_name"],
             "test_curriculum": data["test_curriculum"],
             "first_test_year": int(data["test_grade"]),
             "expected_second_year": int(data["next_test_grade"]),
-            "expires_at": (datetime.now() + timedelta(hours=48)).isoformat()
-}
+            "expires_at": (datetime.now() + timedelta(hours=48)).isoformat(),
+        }
 
         curriculum_slug = data["test_curriculum"].strip().lower()
         next_test_grade = int(data["next_test_grade"])
 
         second_test_link = (
-            f"{base_url}/schrool-fresher/"
+            f"{FRONTEND_URL}/schrool-fresher/"
             f"{curriculum_slug}-year{next_test_grade}-math-test.html"
             f"?token={token}"
         )
 
-        # Email body
-        interpretation = get_interpretation(data["percentage"])
+        interpretation = get_interpretation(int(data["percentage"]))
+        performance = get_performance_level(int(data["percentage"]))
+        color = performance["color"]
 
         html_content = f"""
+        <!DOCTYPE html>
         <html>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #2563eb;">Test Results for {student_first_name}</h2>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">⏰ Test 1 Complete!</h1>
+            </div>
 
-                <p>Dear {data.get('parent_name', 'Parent')},</p>
+            <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+                <p style="font-size: 16px; margin-bottom: 20px;">Dear {data.get('parent_name', 'Parent')},</p>
 
-                <p>Thank you for completing the first diagnostic test for {student_first_name}.</p>
+                <p style="font-size: 16px; margin-bottom: 25px;">
+                    <strong>{data['student_name']}</strong> has completed the first diagnostic test.
+                </p>
 
-                <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3 style="margin-top: 0;">First Test Results</h3>
+                <div style="background-color: white; padding: 25px; border-radius: 8px; border-left: 4px solid {color}; margin-bottom: 25px;">
+                    <h2 style="color: #1f2937; margin-top: 0; font-size: 20px;">First Test Results</h2>
                     <p><strong>Completed test:</strong> {data['test_curriculum']} Year {data['test_grade']}</p>
                     <p><strong>Score:</strong> {data['score']} out of {data['total']} ({data['percentage']}%)</p>
+                    <p><strong>Performance Assessment:</strong> {interpretation}</p>
                 </div>
 
-                <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
-                    <h3 style="margin-top: 0;">Performance Assessment</h3>
-                    <p>{interpretation}</p>
-                </div>
-
-                <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3 style="margin-top: 0;">Next Test to Complete</h3>
+                <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
+                    <h3 style="color: #92400e; margin-top: 0; font-size: 18px;">Next Test to Complete</h3>
                     <p><strong>{data['test_curriculum']} Year {next_test_grade}</strong></p>
                     <p>Please complete this second test within 48 hours so we can provide a full diagnosis of your child's math situation.</p>
-                    <p style="margin-top: 15px;">
-                        <a href="{second_test_link}"
-                           style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                            Take {data['test_curriculum']} Year {next_test_grade} Test Now
-                        </a>
-                    </p>
-                    <p style="font-size: 16px; color: #dc2626; font-weight: bold; margin-top: 15px;">
-                        ⏰ Complete the second test within 48 hours
-                    </p>
-                    <p style="font-size: 14px; color: #666; margin-top: 5px;">
-                        Link expires: <strong>{deadline_str}</strong>
-                    </p>
+                    <p><strong>Link expires:</strong> {deadline_str}</p>
                 </div>
 
-                <p>If you have any questions, please don't hesitate to reach out.</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{second_test_link}"
+                       style="display: inline-block; background-color: #2563eb; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
+                        Take {data['test_curriculum']} Year {next_test_grade} Test Now
+                    </a>
+                </div>
 
-                <p>Best regards,<br>
-                <strong>Richard & The Schrool Team</strong></p>
-
-                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-
-                <p style="font-size: 12px; color: #9ca3af;">
-                    This email was sent to {data['parent_email']} because you completed a diagnostic test at Schrool.
+                <p style="font-size: 14px; color: #666;">
+                    Best regards,<br>
+                    <strong>Richard & The Schrool Team</strong>
                 </p>
             </div>
         </body>
@@ -385,76 +428,288 @@ def send_first_test_email(data):
 
 
 def send_combined_results_email(data):
-    """Send email with combined results from both tests"""
     try:
         html_content = f"""
+        <!DOCTYPE html>
         <html>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h2 style="color: #10b981;">🎉 Congratulations!</h2>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Congratulations!</h1>
+            </div>
 
-                <p>Dear {data.get('parent_name', 'Parent')},</p>
+            <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+                <p style="font-size: 16px; margin-bottom: 20px;">Dear {data.get('parent_name', 'Parent')},</p>
 
-                <p>{data['student_name']} has completed both diagnostic tests!</p>
+                <p style="font-size: 16px; margin-bottom: 25px;">
+                    <strong>{data['student_name']}</strong> has completed both diagnostic tests!
+                </p>
 
-                <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
-                    <h3 style="margin-top: 0;">Complete Results Summary</h3>
-                    <p><strong>Test 1:</strong> {data.get('test1_name', 'First Test')} - <strong style="color: #059669; font-size: 18px;">{data.get('test1_score', 'N/A')}%</strong></p>
+                <div style="background-color: #ecfdf5; padding: 25px; border-radius: 8px; border-left: 4px solid #059669; margin-bottom: 25px;">
+                    <h2 style="color: #065f46; margin-top: 0; font-size: 20px;">Complete Results Summary</h2>
+
+                    <p><strong>Test 1:</strong> {data.get('test1_name', 'First Test')} -
+                    <strong style="color: #059669;">{data.get('test1_score', 'N/A')}%</strong></p>
                     <p style="font-size: 14px; color: #666; margin-left: 20px;">Raw Score: {data.get('test1_raw', 'N/A')}</p>
 
-                    <p style="margin-top: 15px;"><strong>Test 2:</strong> {data.get('test2_name', 'Second Test')} - <strong style="color: #059669; font-size: 18px;">{data.get('test2_score', 'N/A')}%</strong></p>
+                    <p style="margin-top: 20px;"><strong>Test 2:</strong> {data.get('test2_name', 'Second Test')} -
+                    <strong style="color: #059669;">{data.get('test2_score', 'N/A')}%</strong></p>
                     <p style="font-size: 14px; color: #666; margin-left: 20px;">Raw Score: {data.get('test2_raw', 'N/A')}</p>
                 </div>
 
-                <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <h3 style="margin-top: 0;">What's Next?</h3>
-                    <p>Our team will analyze these results and send you personalized recommendations and strategies within the next <strong>72 hours</strong>.</p>
-                    <p>You'll receive:</p>
-                    <ul>
-                        <li>Detailed analysis of strengths and areas for improvement</li>
-                        <li>Personalized learning strategies</li>
-                        <li>Recommended resources and activities</li>
-                        <li>Tips for supporting your child's math development</li>
-                    </ul>
+                <div style="background-color: #dbeafe; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <h3 style="color: #1e40af; margin-top: 0; font-size: 18px;">What's Next?</h3>
+                    <p style="color: #1e3a8a;">
+                        Our team will analyze these results and send you personalized recommendations and strategies within the next <strong>72 hours</strong>.
+                    </p>
                 </div>
 
-                <p>In the meantime, if you'd like to discuss your child's math learning journey, feel free to reply to this email.</p>
-
-                <p>Best regards,<br>
-                <strong>Richard & The Schrool Team</strong></p>
-
-                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-
-                <p style="font-size: 12px; color: #9ca3af;">
-                    This email was sent to {data['parent_email']} because you completed diagnostic tests at Schrool.
+                <p style="font-size: 14px; color: #666;">
+                    Best regards,<br>
+                    <strong>Richard & The Schrool Team</strong>
                 </p>
             </div>
         </body>
         </html>
         """
 
-        subject = f"Complete Diagnostic Results for {data['student_name']}"
+        subject = f"🎉 Complete Diagnostic Results for {data['student_name']}"
         to_name = data.get("parent_name", "Parent")
-
         return send_brevo_email(data["parent_email"], to_name, subject, html_content)
 
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 
-def get_interpretation(percentage):
-    """Get performance interpretation based on percentage"""
-    if percentage >= 90:
-        return "Excellent! Your child demonstrates strong mastery of the concepts at this grade level."
-    if percentage >= 75:
-        return "Good performance! Your child has a solid understanding with some areas for improvement."
-    if percentage >= 60:
-        return "Fair performance. Your child understands basic concepts but needs support in several areas."
-    if percentage >= 40:
-        return "Your child is struggling with many concepts at this level and would benefit from targeted support."
-    return "Your child needs significant support. Consider working with a tutor to build foundational skills."
+def send_followup_email(data):
+    try:
+        test1_score = int(data.get("test1_score", 0) or 0)
+        test2_score = int(data.get("test2_score", 0) or 0)
+        avg_score = (test1_score + test2_score) / 2 if test1_score and test2_score else 0
 
+        if avg_score >= 75:
+            recommendation_title = "🌟 Excellent Progress!"
+            recommendation_text = f"Your child is performing exceptionally well with an average score of {avg_score:.0f}%."
+            color = "#059669"
+        elif avg_score >= 60:
+            recommendation_title = "📈 Good Foundation"
+            recommendation_text = f"Your child shows a solid foundation with an average score of {avg_score:.0f}%."
+            color = "#2563eb"
+        else:
+            recommendation_title = "💪 Opportunity for Growth"
+            recommendation_text = f"Your child is working with an average score of {avg_score:.0f}%."
+            color = "#d97706"
+
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">📊 Your Personalized Analysis</h1>
+            </div>
+
+            <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+                <p>Dear {data.get('parent_name', 'Parent')},</p>
+                <p>Our team has analyzed {data['student_name']}'s performance and prepared personalized recommendations.</p>
+
+                <div style="background-color: #f0f9ff; padding: 25px; border-radius: 8px; border-left: 4px solid {color}; margin-bottom: 25px;">
+                    <h2 style="margin-top: 0;">{recommendation_title}</h2>
+                    <p>{recommendation_text}</p>
+                </div>
+
+                <p>Best regards,<br><strong>Richard & The Schrool Team</strong></p>
+            </div>
+        </body>
+        </html>
+        """
+
+        subject = f"📊 Personalized Analysis for {data['student_name']}"
+        return send_brevo_email(data["parent_email"], data.get("parent_name", "Parent"), subject, html_content)
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+# ============================================================================
+# MAIN API ENDPOINT
+# ============================================================================
+
+@app.route("/api/submit-test", methods=["POST", "OPTIONS"])
+def submit_test():
+    if request.method == "OPTIONS":
+        return ("", 204)
+
+    try:
+        data = request.get_json(silent=True) or {}
+
+        required_fields = [
+            "parent_email",
+            "student_name",
+            "test_curriculum",
+            "test_grade",
+            "score",
+            "total",
+            "percentage",
+        ]
+
+        for field in required_fields:
+            if field not in data or data[field] in (None, ""):
+                return jsonify({"success": False, "error": f"Missing required field: {field}"}), 400
+
+        parent_email = data["parent_email"]
+        student_name = data["student_name"]
+        student_key = normalize_student_key(parent_email, student_name)
+
+        is_first_test = bool(data.get("is_first_test", True))
+        school_grade_raw = data.get("school_grade", "")
+
+        # Token override for continuation flow
+        token = data.get("token")
+        if token:
+            if token not in continuation_tokens:
+                return jsonify({"success": False, "error": "Invalid continuation token"}), 400
+
+            token_record = continuation_tokens[token]
+            expires_at = datetime.fromisoformat(token_record["expires_at"])
+            if datetime.now() > expires_at:
+                del continuation_tokens[token]
+                return jsonify({"success": False, "error": "Continuation token expired"}), 400
+
+            expected_second_year = int(token_record["expected_second_year"])
+            submitted_year = int(data["test_grade"])
+
+            if submitted_year != expected_second_year:
+                return jsonify({
+                    "success": False,
+                    "error": f"Incorrect second test submitted. Expected Year {expected_second_year}, but received Year {submitted_year}."
+                }), 400
+
+            is_first_test = False
+            data["parent_email"] = token_record["parent_email"]
+            data["parent_name"] = token_record["parent_name"]
+            data["student_name"] = token_record["student_name"]
+            data["test_curriculum"] = token_record["test_curriculum"]
+            student_key = token_record["student_key"]
+
+        if is_first_test:
+            if not school_grade_raw:
+                return jsonify({"success": False, "error": "Missing required field: school_grade"}), 400
+
+            student_year = int(school_grade_raw)
+            first_test_year = int(data["test_grade"])
+            expected_second_year = calculate_expected_second_year(student_year, first_test_year)
+
+            if expected_second_year is None:
+                return jsonify({
+                    "success": False,
+                    "error": (
+                        f"Invalid test year selected. Student year is {student_year}, "
+                        f"test year is {first_test_year}. Expected {student_year - 1} or {student_year - 2}."
+                    ),
+                }), 400
+
+            data["next_test_grade"] = expected_second_year
+
+            store_first_test(student_key, data, expected_second_year)
+            result = send_first_test_email(data)
+
+            if result.get("success"):
+                return jsonify({
+                    "success": True,
+                    "message": "First test email sent successfully",
+                    "email": data["parent_email"],
+                    "test_number": 1,
+                }), 200
+
+            return jsonify({
+                "success": False,
+                "error": result.get("error", "Failed to send email"),
+            }), 500
+
+        # SECOND TEST
+        first_test = get_first_test(student_key)
+        if not first_test:
+            return jsonify({
+                "success": False,
+                "error": "First test data not found for this student."
+            }), 400
+
+        first_test_year = int(first_test["test1_year"])
+        expected_second_year = int(first_test["expected_second_year"])
+        submitted_year = int(data["test_grade"])
+
+        if submitted_year == first_test_year:
+            return jsonify({
+                "success": False,
+                "error": (
+                    f"Duplicate test submission detected. "
+                    f"The first completed test was Year {first_test_year}. "
+                    f"The required second test is Year {expected_second_year}."
+                )
+            }), 400
+
+        if submitted_year != expected_second_year:
+            return jsonify({
+                "success": False,
+                "error": (
+                    f"Incorrect second test submitted. "
+                    f"Expected Year {expected_second_year}, but received Year {submitted_year}."
+                )
+            }), 400
+
+        store_second_test(student_key, data)
+
+        data["parent_name"] = first_test["parent_name"]
+        data["test1_name"] = first_test["test1_name"]
+        data["test1_score"] = first_test["test1_score"]
+        data["test1_raw"] = first_test["test1_raw"]
+        data["test2_name"] = f"{data['test_curriculum']} Year {data['test_grade']}"
+        data["test2_score"] = int(data["percentage"])
+        data["test2_raw"] = f"{data['score']}/{data['total']}"
+
+        result = send_combined_results_email(data)
+
+        if result.get("success"):
+            followup_result = send_followup_email(data)
+            if not followup_result.get("success"):
+                print(f"Warning: Failed to send follow-up email: {followup_result.get('error')}")
+
+            cleanup_test_data(student_key)
+
+            if token and token in continuation_tokens:
+                del continuation_tokens[token]
+
+            return jsonify({
+                "success": True,
+                "message": "Combined results email sent successfully",
+                "email": data["parent_email"],
+                "test_number": 2,
+            }), 200
+
+        return jsonify({
+            "success": False,
+            "error": result.get("error", "Failed to send email"),
+        }), 500
+
+    except Exception as e:
+        print(f"Error in submit_test: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ============================================================================
+# ERROR HANDLERS
+# ============================================================================
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"success": False, "error": "Endpoint not found"}), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({"success": False, "error": "Internal server error"}), 500
+
+# ============================================================================
+# APPLICATION ENTRY POINT
+# ============================================================================
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=False)
