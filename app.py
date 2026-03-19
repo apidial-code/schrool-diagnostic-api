@@ -1,5 +1,5 @@
 """
-Schrool Diagnostic Tests Backend - Final Clean Production Version
+Schrool Diagnostic Tests Backend - Final Clean Production Version v2
 
 Features:
 - Brevo email delivery
