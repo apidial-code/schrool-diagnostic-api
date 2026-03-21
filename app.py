@@ -609,6 +609,17 @@ def submit_test():
             data["next_test_grade"] = expected_second_year
 
             store_first_test(student_key, data, expected_second_year)
+
+            # SAME-DAY FLOW: store first test but do not send first email
+            if bool(data.get("store_only", False)):
+                return jsonify({
+                    "success": True,
+                    "message": "First test stored successfully without email",
+                    "email": data["parent_email"],
+                    "test_number": 1,
+                    "stored_only": True,
+                }), 200
+
             result = send_first_test_email(data)
 
             if result.get("success"):
@@ -623,7 +634,6 @@ def submit_test():
                 "success": False,
                 "error": result.get("error", "Failed to send email"),
             }), 500
-
         # SECOND TEST
         first_test = get_first_test(student_key)
         if not first_test:
