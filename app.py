@@ -31,14 +31,16 @@ CORS(
         r"/api/*": {
             "origins": [
                 "https://test.schrool.net",
+                "https://www.test.schrool.net",
                 "https://schrool.net",
-                "https://www.schrool.com",
+                "https://www.schrool.net",
                 "https://schrool.com",
+                "https://www.schrool.com",
                 "http://localhost:3000",
             ]
         }
     },
-    supports_credentials=True,
+    supports_credentials=False,
     methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
@@ -532,10 +534,8 @@ def send_followup_email(data):
 # MAIN API ENDPOINT
 # ============================================================================
 
-@app.route("/api/submit-test", methods=["POST", "OPTIONS"])
+@app.route("/api/submit-test", methods=["POST"])
 def submit_test():
-    if request.method == "OPTIONS":
-        return ("", 204)
 
     try:
         data = request.get_json(silent=True) or {}
