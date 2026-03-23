@@ -589,7 +589,7 @@ def submit_test():
             data["test_curriculum"] = token_record["test_curriculum"]
             student_key = token_record["student_key"]
 
-        if is_first_test:
+                if is_first_test:
             if not school_grade_raw:
                 return jsonify({"success": False, "error": "Missing required field: school_grade"}), 400
 
@@ -608,9 +608,10 @@ def submit_test():
 
             data["next_test_grade"] = expected_second_year
 
+            # Always store the first test
             store_first_test(student_key, data, expected_second_year)
 
-            # SAME-DAY FLOW: store first test but do not send first email
+            # SAME-DAY FLOW: store first test but do NOT send first email
             if bool(data.get("store_only", False)):
                 return jsonify({
                     "success": True,
@@ -620,6 +621,7 @@ def submit_test():
                     "stored_only": True,
                 }), 200
 
+            # DELAYED FLOW: send first email with second-test link
             result = send_first_test_email(data)
 
             if result.get("success"):
