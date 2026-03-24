@@ -9,7 +9,7 @@ Features:
 - /api/continue endpoint for restoring student/session identity
 - First test email, combined results email, and follow-up email
 """
-
+from flask_cors import CORS, cross_origin
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
@@ -534,9 +534,15 @@ def send_followup_email(data):
 # ============================================================================
 
 @app.route("/api/submit-test", methods=["POST", "OPTIONS"])
+@cross_origin()
 def submit_test():
     if request.method == "OPTIONS":
-        return jsonify({"ok": True}), 200
+        response = jsonify({"ok": True})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "*")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response, 200
+    
     try:
         data = request.get_json(silent=True) or {}
 
