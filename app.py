@@ -538,7 +538,9 @@ def submit_test():
     
     try:
         data = request.get_json(silent=True) or {}
-
+is_first_test = bool(data.get("is_first_test", False))
+token = data.get("token")
+school_grade_raw = data.get("school_grade")
         required_fields = [
             "parent_email",
             "student_name",
@@ -557,11 +559,11 @@ def submit_test():
         student_name = data["student_name"]
         student_key = normalize_student_key(parent_email, student_name)
 
-        is_first_test = bool(data.get("is_first_test", True))
+        is_first_test = bool(data.get("is_first_test", False))
         school_grade_raw = data.get("school_grade", "")
-
-        # Token override for continuation flow
         token = data.get("token")
+        # Token override for continuation flow
+      
         if token:
             if token not in continuation_tokens:
                 return jsonify({"success": False, "error": "Invalid continuation token"}), 400
