@@ -595,9 +595,9 @@ def submit_test():
             data["test_curriculum"] = token_record["test_curriculum"]
             student_key = token_record["student_key"]
 
-                if is_first_test:
-            if not school_grade_raw:
-                return jsonify({"success": False, "error": "Missing required field: school_grade"}), 400
+            if is_first_test:
+                if not school_grade_raw:
+                    return jsonify({"success": False, "error": "Missing required field: school_grade"}), 400
 
             student_year = int(school_grade_raw)
             first_test_year = int(data["test_grade"])
