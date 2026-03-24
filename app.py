@@ -23,26 +23,25 @@ from contextlib import contextmanager
 # FLASK APP INITIALIZATION
 # ============================================================================
 
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
 app = Flask(__name__)
 
 CORS(
     app,
-    resources={
-        r"/api/*": {
-            "origins": [
-                "https://test.schrool.net",
-                "https://www.test.schrool.net",
-                "https://schrool.net",
-                "https://www.schrool.net",
-                "https://schrool.com",
-                "https://www.schrool.com",
-                "http://localhost:3000",
-            ]
-        }
-    },
+    resources={r"/api/*": {"origins": [
+        "https://test.schrool.net",
+        "https://www.test.schrool.net",
+        "https://schrool.net",
+        "https://www.schrool.net",
+        "https://schrool.com",
+        "https://www.schrool.com",
+        "http://localhost:3000"
+    ]}},
     supports_credentials=False,
     methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers="*"
 )
 
 # ============================================================================
