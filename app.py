@@ -523,9 +523,10 @@ def submit_test():
     
     try:
         data = request.get_json(silent=True) or {}
-is_first_test = bool(data.get("is_first_test", False))
-token = data.get("token")
-school_grade_raw = data.get("school_grade")
+        is_first_test = bool(data.get("is_first_test", False))
+        token = data.get("token")
+        school_grade_raw = data.get("school_grade")
+        
         required_fields = [
             "parent_email",
             "student_name",
