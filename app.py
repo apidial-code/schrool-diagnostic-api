@@ -1,6 +1,6 @@
 """
 Schrool Diagnostic Tests Backend - Final Clean Production Version v2
-
+print("🔥 THIS IS THE ACTIVE APP.PY 🔥")
 Features:
 - Brevo email delivery
 - Explicit CORS allowlist for Schrool frontend domains
