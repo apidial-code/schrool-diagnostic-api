@@ -576,9 +576,9 @@ def submit_test():
             data["test_curriculum"] = token_record["test_curriculum"]
             student_key = token_record["student_key"]
 
-            if is_first_test:
-                if not school_grade_raw:
-                    return jsonify({"success": False, "error": "Missing required field: school_grade"}), 400
+        if is_first_test:
+            if not school_grade_raw:
+                return jsonify({"success": False, "error": "Missing required field: school_grade"}), 400
 
             student_year = int(school_grade_raw)
             first_test_year = int(data["test_grade"])
@@ -593,104 +593,104 @@ def submit_test():
                     ),
                 }), 400
 
-            data["next_test_grade"] = expected_second_year
+                    data["next_test_grade"] = expected_second_year
 
-            # Always store the first test
-            store_first_test(student_key, data, expected_second_year)
+                    # Always store the first test
+                    store_first_test(student_key, data, expected_second_year)
 
-            # SAME-DAY FLOW: store first test but do NOT send first email
-            if bool(data.get("store_only", False)):
+                    # SAME-DAY FLOW: store first test but do NOT send first email
+                    if bool(data.get("store_only", False)):
+                        return jsonify({
+                            "success": True,
+                            "message": "First test stored successfully without email",
+                            "email": data["parent_email"],
+                            "test_number": 1,
+                            "stored_only": True,
+                    }), 200
+
+                # DELAYED FLOW: send first email with second-test link
+                result = send_first_test_email(data)
+
+                if result.get("success"):
+                    return jsonify({
+                        "success": True,
+                        "message": "First test email sent successfully",
+                        "email": data["parent_email"],
+                        "test_number": 1,
+                }    ), 200
+
                 return jsonify({
-                    "success": True,
-                    "message": "First test stored successfully without email",
-                    "email": data["parent_email"],
-                    "test_number": 1,
-                    "stored_only": True,
-                }), 200
+                    "success": False,
+                    "error": result.get("error", "Failed to send email"),
+                }), 500
+            # SECOND TEST
+            first_test = get_first_test(student_key)
+            if not first_test:
+                return jsonify({
+                    "success": False,
+                    "error": "First test data not found for this student."
+                }), 400
 
-            # DELAYED FLOW: send first email with second-test link
-            result = send_first_test_email(data)
+            first_test_year = int(first_test["test1_year"])
+            expected_second_year = int(first_test["expected_second_year"])
+            submitted_year = int(data["test_grade"])
+
+            if submitted_year == first_test_year:
+                return jsonify({
+                    "success": False,
+                    "error": (
+                        f"Duplicate test submission detected. "
+                        f"The first completed test was Year {first_test_year}. "
+                        f"The required second test is Year {expected_second_year}."
+                    )
+                }), 400
+
+            if submitted_year != expected_second_year:
+                return jsonify({
+                    "success": False,
+                    "error": (
+                        f"Incorrect second test submitted. "
+                        f"Expected Year {expected_second_year}, but received Year {submitted_year}."
+                    )
+                }), 400
+
+            store_second_test(student_key, data)
+
+            data["parent_name"] = first_test["parent_name"]
+            data["test1_name"] = first_test["test1_name"]
+            data["test1_score"] = first_test["test1_score"]
+            data["test1_raw"] = first_test["test1_raw"]
+            data["test2_name"] = f"{data['test_curriculum']} Year {data['test_grade']}"
+            data["test2_score"] = int(data["percentage"])
+            data["test2_raw"] = f"{data['score']}/{data['total']}"
+
+            result = send_combined_results_email(data)
 
             if result.get("success"):
+                followup_result = send_followup_email(data)
+                if not followup_result.get("success"):
+                    print(f"Warning: Failed to send follow-up email: {followup_result.get('error')}")
+
+                cleanup_test_data(student_key)
+
+                if token and token in continuation_tokens:
+                    del continuation_tokens[token]
+
                 return jsonify({
                     "success": True,
-                    "message": "First test email sent successfully",
+                    "message": "Combined results email sent successfully",
                     "email": data["parent_email"],
-                    "test_number": 1,
+                    "test_number": 2,
                 }), 200
 
             return jsonify({
                 "success": False,
                 "error": result.get("error", "Failed to send email"),
             }), 500
-        # SECOND TEST
-        first_test = get_first_test(student_key)
-        if not first_test:
-            return jsonify({
-                "success": False,
-                "error": "First test data not found for this student."
-            }), 400
 
-        first_test_year = int(first_test["test1_year"])
-        expected_second_year = int(first_test["expected_second_year"])
-        submitted_year = int(data["test_grade"])
-
-        if submitted_year == first_test_year:
-            return jsonify({
-                "success": False,
-                "error": (
-                    f"Duplicate test submission detected. "
-                    f"The first completed test was Year {first_test_year}. "
-                    f"The required second test is Year {expected_second_year}."
-                )
-            }), 400
-
-        if submitted_year != expected_second_year:
-            return jsonify({
-                "success": False,
-                "error": (
-                    f"Incorrect second test submitted. "
-                    f"Expected Year {expected_second_year}, but received Year {submitted_year}."
-                )
-            }), 400
-
-        store_second_test(student_key, data)
-
-        data["parent_name"] = first_test["parent_name"]
-        data["test1_name"] = first_test["test1_name"]
-        data["test1_score"] = first_test["test1_score"]
-        data["test1_raw"] = first_test["test1_raw"]
-        data["test2_name"] = f"{data['test_curriculum']} Year {data['test_grade']}"
-        data["test2_score"] = int(data["percentage"])
-        data["test2_raw"] = f"{data['score']}/{data['total']}"
-
-        result = send_combined_results_email(data)
-
-        if result.get("success"):
-            followup_result = send_followup_email(data)
-            if not followup_result.get("success"):
-                print(f"Warning: Failed to send follow-up email: {followup_result.get('error')}")
-
-            cleanup_test_data(student_key)
-
-            if token and token in continuation_tokens:
-                del continuation_tokens[token]
-
-            return jsonify({
-                "success": True,
-                "message": "Combined results email sent successfully",
-                "email": data["parent_email"],
-                "test_number": 2,
-            }), 200
-
-        return jsonify({
-            "success": False,
-            "error": result.get("error", "Failed to send email"),
-        }), 500
-
-    except Exception as e:
-        print(f"Error in submit_test: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        except Exception as e:
+            print(f"Error in submit_test: {str(e)}")
+            return jsonify({"success": False, "error": str(e)}), 500
 
 # ============================================================================
 # ERROR HANDLERS
