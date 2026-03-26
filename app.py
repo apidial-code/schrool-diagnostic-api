@@ -427,19 +427,18 @@ def send_first_test_email(data):
 
 def send_combined_results_email(first_test, second_test):
     try:
-        # Build combined data structure (so existing template still works)
         data = {
             "parent_name": second_test.get("parent_name") or first_test.get("parent_name", "Parent"),
             "parent_email": second_test.get("parent_email") or first_test.get("parent_email"),
             "student_name": second_test.get("student_name") or first_test.get("student_name"),
 
-            "test1_name": f"Year {first_test.get('test_grade', '')}",
+            "test1_name": f"Year {first_test.get('grade') or first_test.get('test_grade', '')}",
             "test1_score": first_test.get("percentage", "N/A"),
-            "test1_raw": f"{first_test.get('score', 0)}/{first_test.get('total', 0)}",
+            "test1_raw": f"{first_test.get('score', 0)}/{first_test.get('maxScore', first_test.get('total', 0))}",
 
-            "test2_name": f"Year {second_test.get('test_grade', '')}",
+            "test2_name": f"Year {second_test.get('grade') or second_test.get('test_grade', '')}",
             "test2_score": second_test.get("percentage", "N/A"),
-            "test2_raw": f"{second_test.get('score', 0)}/{second_test.get('total', 0)}",
+            "test2_raw": f"{second_test.get('score', 0)}/{second_test.get('maxScore', second_test.get('total', 0))}",
         }
 
         html_content = f"""
@@ -486,12 +485,8 @@ def send_combined_results_email(first_test, second_test):
         """
 
         subject = f"🎉 Complete Diagnostic Results for {data['student_name']}"
-        return send_brevo_email(
-            data["parent_email"],
-            data.get("parent_name", "Parent"),
-            subject,
-            html_content
-        )
+        to_name = data.get("parent_name", "Parent")
+        return send_brevo_email(data["parent_email"], to_name, subject, html_content)
 
     except Exception as e:
         return {"success": False, "error": str(e)}
