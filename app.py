@@ -529,7 +529,7 @@ def send_followup_email(data):
 # MAIN API ENDPOINT
 # ============================================================================
 
-@app.route("/api/submit-test", methods=["POST"])
+@app.route('/api/submit-test', methods=['POST', 'OPTIONS'])
 def submit_test():
     
     try:
