@@ -606,36 +606,36 @@ def submit_test():
                     ),
                 }), 400
 
-                    data["next_test_grade"] = expected_second_year
+            data["next_test_grade"] = expected_second_year
 
-                    # Always store the first test
-                    store_first_test(student_key, data, expected_second_year)
+            # Always store the first test
+            store_first_test(student_key, data, expected_second_year)
 
-                    # SAME-DAY FLOW: store first test but do NOT send first email
-                    if bool(data.get("store_only", False)):
-                        return jsonify({
-                            "success": True,
-                            "message": "First test stored successfully without email",
-                            "email": data["parent_email"],
-                            "test_number": 1,
-                            "stored_only": True,
-                    }), 200
-
-                # DELAYED FLOW: send first email with second-test link
-                result = send_first_test_email(data)
-
-                if result.get("success"):
-                    return jsonify({
-                        "success": True,
-                        "message": "First test email sent successfully",
-                        "email": data["parent_email"],
-                        "test_number": 1,
-                }    ), 200
-
+            # SAME-DAY FLOW: store first test but do NOT send first email
+            if bool(data.get("store_only", False)):
                 return jsonify({
-                    "success": False,
-                    "error": result.get("error", "Failed to send email"),
-                }), 500
+                    "success": True,
+                    "message": "First test stored successfully without email",
+                    "email": data["parent_email"],
+                    "test_number": 1,
+                    "stored_only": True,
+            }), 200
+
+            # DELAYED FLOW: send first email with second-test link
+            result = send_first_test_email(data)
+
+            if result.get("success"):
+                return jsonify({
+                    "success": True,
+                    "message": "First test email sent successfully",
+                    "email": data["parent_email"],
+                    "test_number": 1,
+            }    ), 200
+
+            return jsonify({
+                "success": False,
+                "error": result.get("error", "Failed to send email"),
+            }), 500
             # SECOND TEST
             first_test = get_first_test(student_key)
             if not first_test:
