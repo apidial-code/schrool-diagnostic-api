@@ -27,7 +27,18 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "https://test.schrool.net",
+            "https://schrool.net",
+            "http://localhost:3000",
+            "http://127.0.0.1:5500"
+        ],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "methods": ["GET", "POST", "OPTIONS"]
+    }
+})
 
 # ============================================================================
 # CONFIGURATION
