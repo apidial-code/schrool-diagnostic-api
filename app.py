@@ -27,6 +27,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 app = Flask(__name__)
+
 CORS(app, resources={
     r"/api/*": {
         "origins": [
@@ -531,7 +532,8 @@ def send_followup_email(data):
 
 @app.route('/api/submit-test', methods=['POST', 'OPTIONS'])
 def submit_test():
-    
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200    
     try:
         data = request.get_json(silent=True) or {}
         is_first_test = bool(data.get("is_first_test", False))
