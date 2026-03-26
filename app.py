@@ -425,8 +425,23 @@ def send_first_test_email(data):
         return {"success": False, "error": str(e)}
 
 
-def send_combined_results_email(data):
+def send_combined_results_email(first_test, second_test):
     try:
+        # Build combined data structure (so existing template still works)
+        data = {
+            "parent_name": second_test.get("parent_name") or first_test.get("parent_name", "Parent"),
+            "parent_email": second_test.get("parent_email") or first_test.get("parent_email"),
+            "student_name": second_test.get("student_name") or first_test.get("student_name"),
+
+            "test1_name": f"Year {first_test.get('test_grade', '')}",
+            "test1_score": first_test.get("percentage", "N/A"),
+            "test1_raw": f"{first_test.get('score', 0)}/{first_test.get('total', 0)}",
+
+            "test2_name": f"Year {second_test.get('test_grade', '')}",
+            "test2_score": second_test.get("percentage", "N/A"),
+            "test2_raw": f"{second_test.get('score', 0)}/{second_test.get('total', 0)}",
+        }
+
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -445,19 +460,19 @@ def send_combined_results_email(data):
                 <div style="background-color: #ecfdf5; padding: 25px; border-radius: 8px; border-left: 4px solid #059669; margin-bottom: 25px;">
                     <h2 style="color: #065f46; margin-top: 0; font-size: 20px;">Complete Results Summary</h2>
 
-                    <p><strong>Test 1:</strong> {data.get('test1_name', 'First Test')} -
-                    <strong style="color: #059669;">{data.get('test1_score', 'N/A')}%</strong></p>
-                    <p style="font-size: 14px; color: #666; margin-left: 20px;">Raw Score: {data.get('test1_raw', 'N/A')}</p>
+                    <p><strong>Test 1:</strong> {data.get('test1_name')} -
+                    <strong style="color: #059669;">{data.get('test1_score')}%</strong></p>
+                    <p style="font-size: 14px; color: #666; margin-left: 20px;">Raw Score: {data.get('test1_raw')}</p>
 
-                    <p style="margin-top: 20px;"><strong>Test 2:</strong> {data.get('test2_name', 'Second Test')} -
-                    <strong style="color: #059669;">{data.get('test2_score', 'N/A')}%</strong></p>
-                    <p style="font-size: 14px; color: #666; margin-left: 20px;">Raw Score: {data.get('test2_raw', 'N/A')}</p>
+                    <p style="margin-top: 20px;"><strong>Test 2:</strong> {data.get('test2_name')} -
+                    <strong style="color: #059669;">{data.get('test2_score')}%</strong></p>
+                    <p style="font-size: 14px; color: #666; margin-left: 20px;">Raw Score: {data.get('test2_raw')}</p>
                 </div>
 
                 <div style="background-color: #dbeafe; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
                     <h3 style="color: #1e40af; margin-top: 0; font-size: 18px;">What's Next?</h3>
                     <p style="color: #1e3a8a;">
-                        Our team will analyze these results and send you personalized recommendations and strategies within the next <strong>72 hours</strong>.
+                        Our team will analyze these results and send you personalized recommendations within the next <strong>72 hours</strong>.
                     </p>
                 </div>
 
@@ -471,57 +486,12 @@ def send_combined_results_email(data):
         """
 
         subject = f"🎉 Complete Diagnostic Results for {data['student_name']}"
-        to_name = data.get("parent_name", "Parent")
-        return send_brevo_email(data["parent_email"], to_name, subject, html_content)
-
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-def send_followup_email(data):
-    try:
-        test1_score = int(data.get("test1_score", 0) or 0)
-        test2_score = int(data.get("test2_score", 0) or 0)
-        avg_score = (test1_score + test2_score) / 2 if test1_score and test2_score else 0
-
-        if avg_score >= 75:
-            recommendation_title = "🌟 Excellent Progress!"
-            recommendation_text = f"Your child is performing exceptionally well with an average score of {avg_score:.0f}%."
-            color = "#059669"
-        elif avg_score >= 60:
-            recommendation_title = "📈 Good Foundation"
-            recommendation_text = f"Your child shows a solid foundation with an average score of {avg_score:.0f}%."
-            color = "#2563eb"
-        else:
-            recommendation_title = "💪 Opportunity for Growth"
-            recommendation_text = f"Your child is working with an average score of {avg_score:.0f}%."
-            color = "#d97706"
-
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 28px;">📊 Your Personalized Analysis</h1>
-            </div>
-
-            <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
-                <p>Dear {data.get('parent_name', 'Parent')},</p>
-                <p>Our team has analyzed {data['student_name']}'s performance and prepared personalized recommendations.</p>
-
-                <div style="background-color: #f0f9ff; padding: 25px; border-radius: 8px; border-left: 4px solid {color}; margin-bottom: 25px;">
-                    <h2 style="margin-top: 0;">{recommendation_title}</h2>
-                    <p>{recommendation_text}</p>
-                </div>
-
-                <p>Best regards,<br><strong>Richard & The Schrool Team</strong></p>
-            </div>
-        </body>
-        </html>
-        """
-
-        subject = f"📊 Personalized Analysis for {data['student_name']}"
-        return send_brevo_email(data["parent_email"], data.get("parent_name", "Parent"), subject, html_content)
+        return send_brevo_email(
+            data["parent_email"],
+            data.get("parent_name", "Parent"),
+            subject,
+            html_content
+        )
 
     except Exception as e:
         return {"success": False, "error": str(e)}
