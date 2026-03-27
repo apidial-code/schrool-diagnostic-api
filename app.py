@@ -586,11 +586,14 @@ def submit_test():
                 }), 500
                 
                 if not school_grade_raw:
-                return jsonify({"success": False, "error": "Missing required field: school_grade"}), 400
-
-            student_year = int(school_grade_raw)
-            first_test_year = int(data["test_grade"])
-            expected_second_year = calculate_expected_second_year(student_year, first_test_year)
+                    return jsonify({
+                        "success": False,
+                        "error": "Missing required field: school_grade"
+                    }), 400
+                
+                student_year = int(school_grade_raw)
+                first_test_year = int(data["test_grade"])
+                expected_second_year = calculate_expected_second_year(student_year, first_test_year)
 
             if expected_second_year is None:
                 return jsonify({
