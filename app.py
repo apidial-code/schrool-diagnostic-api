@@ -568,7 +568,9 @@ def submit_test():
             if send_email_only:
                 expected_second_year = int(data.get("next_test_grade", 0))
                 data["next_test_grade"] = expected_second_year
-
+                
+                store_first_test(student_key, data, expected_second_year)
+                
                 result = send_first_test_email(data)
 
                 if result.get("success"):
