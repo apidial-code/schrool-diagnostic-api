@@ -514,7 +514,7 @@ def submit_test():
         is_first_test = bool(data.get("is_first_test", False))
         token = data.get("token")
         school_grade_raw = data.get("school_grade")
-
+        send_email_only = bool(data.get("send_email_only", False))
         required_fields = [
             "parent_email",
             "student_name",
