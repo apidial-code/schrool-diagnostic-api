@@ -658,7 +658,7 @@ def submit_test():
             "parent_name": data.get("parent_name", "Parent")
         }
         
-                print("FIRST TEST DATA:", first_test)
+        print("FIRST TEST DATA:", first_test)
         print("SECOND TEST DATA:", second_test)
         result = send_combined_results_email(first_test, second_test)
 
