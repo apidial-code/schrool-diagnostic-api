@@ -492,7 +492,53 @@ def send_combined_results_email(first_test, second_test):
 
     except Exception as e:
         return {"success": False, "error": str(e)}
+def send_followup_email(data):
+    try:
+        test1_score = int(data.get("test1_score", 0) or 0)
+        test2_score = int(data.get("test2_score", 0) or 0)
 
+        avg_score = (test1_score + test2_score) / 2 if test1_score and test2_score else 0
+
+        html_content = f"""
+        <html>
+        <body style="font-family: Arial; max-width:600px; margin:auto; padding:20px;">
+            <h2>📊 Personalized Analysis</h2>
+            <p>Dear {data.get('parent_name', 'Parent')},</p>
+            <p>We have reviewed {data['student_name']}'s diagnostic results.</p>
+
+            <p><strong>Average Score:</strong> {avg_score:.0f}%</p>
+
+            <p>We will send tailored recommendations within 72 hours.</p>
+
+            <br>
+            <p>Richard & The Schrool Team</p>
+        </body>
+        </html>
+        """
+
+        subject = f"📊 Analysis for {data['student_name']}"
+
+        return send_brevo_email(
+            data["parent_email"],
+            data.get("parent_name", "Parent"),
+            subject,
+            html_content
+        )
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+        subject = f"📊 Analysis for {data['student_name']}"
+
+        return send_brevo_email(
+            data["parent_email"],
+            data.get("parent_name", "Parent"),
+            subject,
+            html_content
+        )
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
         subject = f"🎉 Complete Diagnostic Results for {data['student_name']}"
         to_name = data.get("parent_name", "Parent")
         return send_brevo_email(data["parent_email"], to_name, subject, html_content)
