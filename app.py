@@ -612,8 +612,10 @@ def submit_test():
             }), 404
 
         second_test = {
+            "grade": data["test_grade"],
             "test_grade": data["test_grade"],
             "score": data["score"],
+            "maxScore": data["total"],
             "total": data["total"],
             "percentage": data["percentage"],
             "test_curriculum": data["test_curriculum"],
@@ -621,7 +623,9 @@ def submit_test():
             "parent_email": data["parent_email"],
             "parent_name": data.get("parent_name", "Parent")
         }
-
+        
+        print("FIRST TEST DATA:", first_test)
+        print("SECOND TEST DATA:", second_test)
         result = send_combined_results_email(first_test, second_test)
 
         if result.get("success"):
