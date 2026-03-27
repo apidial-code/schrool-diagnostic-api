@@ -564,7 +564,26 @@ def submit_test():
             data["test_curriculum"] = token_record["test_curriculum"]
             student_key = token_record["student_key"]
 
-        if is_first_test:
+        if is_first_test or send_email_only:
+                    if send_email_only:
+                expected_second_year = int(data.get("next_test_grade", 0))
+                data["next_test_grade"] = expected_second_year
+
+                result = send_first_test_email(data)
+
+                if result.get("success"):
+                    return jsonify({
+                        "success": True,
+                        "message": "First test email sent successfully",
+                        "email": data["parent_email"],
+                        "test_number": 1,
+                        "email_only": True
+                    }), 200
+
+                return jsonify({
+                    "success": False,
+                    "error": result.get("error", "Failed to send email"),
+                }), 500
             if not school_grade_raw:
                 return jsonify({"success": False, "error": "Missing required field: school_grade"}), 400
 
