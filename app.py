@@ -604,13 +604,13 @@ def submit_test():
                 }), 400
 
         # only override when token is present (continuation flow)
-            if token:
+        if token:
             is_first_test = False
-                data["parent_email"] = token_record["parent_email"]
-                data["parent_name"] = token_record["parent_name"]
-                data["student_name"] = token_record["student_name"]
-                data["test_curriculum"] = token_record["test_curriculum"]
-                student_key = token_record["student_key"]
+            data["parent_email"] = token_record["parent_email"]
+            data["parent_name"] = token_record["parent_name"]
+            data["student_name"] = token_record["student_name"]
+            data["test_curriculum"] = token_record["test_curriculum"]
+            student_key = token_record["student_key"]
 
         # SEND FIRST EMAIL ONLY, used when parent clicks "Do Test Later"
         if send_email_only:
