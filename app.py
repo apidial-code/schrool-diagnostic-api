@@ -603,8 +603,9 @@ def submit_test():
                     "error": f"Incorrect second test submitted. Expected Year {expected_second_year}, but received Year {submitted_year}."
                 }), 400
 
-            is_first_test = False
+        # only override when token is present (continuation flow)
             if token:
+            is_first_test = False
                 data["parent_email"] = token_record["parent_email"]
                 data["parent_name"] = token_record["parent_name"]
                 data["student_name"] = token_record["student_name"]
