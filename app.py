@@ -604,44 +604,55 @@ def submit_test():
                 }), 400
 
             is_first_test = False
-            data["parent_email"] = token_record["parent_email"]
-            data["parent_name"] = token_record["parent_name"]
-            data["student_name"] = token_record["student_name"]
-            data["test_curriculum"] = token_record["test_curriculum"]
-            student_key = token_record["student_key"]
+            if token:
+                data["parent_email"] = token_record["parent_email"]
+                data["parent_name"] = token_record["parent_name"]
+                data["student_name"] = token_record["student_name"]
+                data["test_curriculum"] = token_record["test_curriculum"]
+                student_key = token_record["student_key"]
 
-        if is_first_test or send_email_only:
-            if send_email_only:
-                expected_second_year = int(data.get("next_test_grade", 0))
-                data["next_test_grade"] = expected_second_year
-                
-                store_first_test(student_key, data, expected_second_year)
-                
-                result = send_first_test_email(data)
+        # SEND FIRST EMAIL ONLY, used when parent clicks "Do Test Later"
+        if send_email_only:
+            expected_second_year = int(data.get("next_test_grade", 0) or 0)
 
-                if result.get("success"):
-                    return jsonify({
-                        "success": True,
-                        "message": "First test email sent successfully",
-                        "email": data["parent_email"],
-                        "test_number": 1,
-                        "email_only": True
-                    }), 200
-
+            if not expected_second_year:
                 return jsonify({
                     "success": False,
-                    "error": result.get("error", "Failed to send email"),
-                }), 500
-                
-                if not school_grade_raw:
-                    return jsonify({
-                        "success": False,
-                        "error": "Missing required field: school_grade"
-                    }), 400
-                
-                student_year = int(school_grade_raw)
-                first_test_year = int(data["test_grade"])
-                expected_second_year = calculate_expected_second_year(student_year, first_test_year)
+                    "error": "Missing next_test_grade for email-only flow"
+                }), 400
+
+            data["next_test_grade"] = expected_second_year
+
+            # store or refresh first test record before sending email
+            store_first_test(student_key, data, expected_second_year)
+
+            result = send_first_test_email(data)
+
+            if result.get("success"):
+                return jsonify({
+                    "success": True,
+                    "message": "First test email sent successfully",
+                    "email": data["parent_email"],
+                    "test_number": 1,
+                    "email_only": True
+                }), 200
+
+            return jsonify({
+                "success": False,
+                "error": result.get("error", "Failed to send email"),
+            }), 500
+
+        # ACTUAL FIRST TEST SUBMISSION
+        if is_first_test:
+            if not school_grade_raw:
+                return jsonify({
+                    "success": False,
+                    "error": "Missing required field: school_grade"
+                }), 400
+
+            student_year = int(school_grade_raw)
+            first_test_year = int(data["test_grade"])
+            expected_second_year = calculate_expected_second_year(student_year, first_test_year)
 
             if expected_second_year is None:
                 return jsonify({
@@ -654,10 +665,10 @@ def submit_test():
 
             data["next_test_grade"] = expected_second_year
 
-            # Always store the first test
+            # always store first test here
             store_first_test(student_key, data, expected_second_year)
 
-            # SAME-DAY FLOW: store first test but do NOT send first email
+            # same-session flow: store only, do not send email yet
             if bool(data.get("store_only", False)):
                 return jsonify({
                     "success": True,
@@ -667,7 +678,7 @@ def submit_test():
                     "stored_only": True,
                 }), 200
 
-            # DELAYED FLOW: send first email with second-test link
+            # delayed flow from backend, if ever used directly
             result = send_first_test_email(data)
 
             if result.get("success"):
