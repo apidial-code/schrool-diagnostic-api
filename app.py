@@ -719,21 +719,8 @@ def submit_test():
         print("FIRST TEST DATA:", first_test)
         print("SECOND TEST DATA:", second_test)
         result = send_combined_results_email(first_test, second_test)
-
+        
         if result.get("success"):
-            followup_data = {
-                "parent_name": second_test.get("parent_name") or first_test.get("parent_name", "Parent"),
-                "parent_email": second_test.get("parent_email") or first_test.get("parent_email"),
-                "student_name": second_test.get("student_name") or first_test.get("student_name", "Student"),
-                "test1_score": first_test.get("test1_score", first_test.get("percentage", 0)),
-                "test2_score": second_test.get("percentage", 0)
-            }
-
-            followup_result = send_followup_email(followup_data)
-
-            if not followup_result.get("success"):
-                print(f"Warning: Failed to send followup email: {followup_result.get('error')}")
-
             return jsonify({
                 "success": True,
                 "message": "Combined results email sent successfully",
