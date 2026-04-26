@@ -362,7 +362,10 @@ def send_first_test_email(data):
         next_test_grade = int(data["next_test_grade"])
 
         next_test_file = data.get("next_test_file")
-
+        
+        print("NEXT TEST FILE RECEIVED:", data.get("next_test_file"))
+        print("NEXT TEST GRADE RECEIVED:", data.get("next_test_grade"))
+        
         if next_test_file:
             second_test_link = (
                 f"{FRONTEND_URL}/schrool-fresher/"
