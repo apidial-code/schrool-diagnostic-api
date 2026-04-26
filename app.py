@@ -361,11 +361,21 @@ def send_first_test_email(data):
         curriculum_slug = data["test_curriculum"].strip().lower()
         next_test_grade = int(data["next_test_grade"])
 
-        second_test_link = (
-            f"{FRONTEND_URL}/schrool-fresher/"
-            f"{curriculum_slug}-year{next_test_grade}-math-test.html"
-            f"?token={token}"
-        )
+        next_test_file = data.get("next_test_file")
+
+        if next_test_file:
+            second_test_link = (
+                f"{FRONTEND_URL}/schrool-fresher/"
+                f"{next_test_file}"
+                f"?token={token}"
+    )
+        else:
+            second_test_link = (
+                f"{FRONTEND_URL}/schrool-fresher/"
+                f"{curriculum_slug}-year{next_test_grade}-math-test.html"
+                f"?token={token}"
+    )
+            
 
         interpretation = get_interpretation(int(data["percentage"]))
         performance = get_performance_level(int(data["percentage"]))
