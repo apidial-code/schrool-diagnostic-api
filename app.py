@@ -504,13 +504,19 @@ def send_combined_results_email(first_test, second_test):
 
         completed_test_label = singapore_level_label(
             curriculum,
-            first_test.get("test_grade") or first_test.get("grade")
+            first_test.get("test_grade")
+            or first_test.get("grade")
+            or first_test.get("test1_year")
+            or first_test.get("first_test_year")
         )
 
         next_test_label = singapore_file_label(
-            second_test.get("test_name"),
+            second_test.get("next_test_file")
+            or second_test.get("test_file")
+            or second_test.get("test_name"),
             curriculum,
-            second_test.get("test_grade") or second_test.get("grade")
+            second_test.get("test_grade")
+            or second_test.get("grade")
         )
 
         html_content = f"""
