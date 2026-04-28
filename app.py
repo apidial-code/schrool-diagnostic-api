@@ -61,12 +61,15 @@ CORS(app, resources={
     r"/api/*": {
         "origins": [
             "https://test.schrool.net",
+            "http://test.schrool.net",
             "https://schrool.net",
+            "http://schrool.net",
             "http://localhost:3000",
             "http://127.0.0.1:5500"
         ],
         "allow_headers": ["Content-Type", "Authorization"],
-        "methods": ["GET", "POST", "OPTIONS"]
+        "methods": ["GET", "POST", "OPTIONS"],
+        "supports_credentials": True
     }
 })
 
@@ -621,7 +624,12 @@ def send_followup_email(data):
 @app.route('/api/submit-test', methods=['POST', 'OPTIONS'])
 def submit_test():
     if request.method == 'OPTIONS':
-        return jsonify({'status': 'ok'}), 200
+       
+        response = jsonify({'status': 'ok'})
+        response.headers.add("Access-Control-Allow-Origin", "https://test.schrool.net")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+        return response, 200
 
     try:
         data = request.get_json(silent=True) or {}
