@@ -396,8 +396,12 @@ def send_first_test_email(data):
         interpretation = get_interpretation(int(data["percentage"]))
         performance = get_performance_level(int(data["percentage"]))
         color = performance["color"]
-
+        
+        completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
+        next_test_label = singapore_level_label(data["test_curriculum"], next_test_grade)
+        
         html_content = f"""
+        
         <!DOCTYPE html>
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
