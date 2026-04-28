@@ -401,14 +401,14 @@ def send_first_test_email(data):
 
                 <div style="background-color: white; padding: 25px; border-radius: 8px; border-left: 4px solid {color}; margin-bottom: 25px;">
                     <h2 style="color: #1f2937; margin-top: 0; font-size: 20px;">First Test Results</h2>
-                    <p><strong>Completed test:</strong> {data['test_curriculum']} Year {data['test_grade']}</p>
+                    <p><strong>Completed test:</strong> {data['test_curriculum']} {completed_test_label}</p>
                     <p><strong>Score:</strong> {data['score']} out of {data['total']} ({data['percentage']}%)</p>
                     <p><strong>Performance Assessment:</strong> {interpretation}</p>
                 </div>
 
                 <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
                     <h3 style="color: #92400e; margin-top: 0; font-size: 18px;">Next Test to Complete</h3>
-                    <p><strong>{data['test_curriculum']} Year {next_test_grade}</strong></p>
+                    <p><strong>{data['test_curriculum']} {next_test_label}</strong></p>
                     <p>Please complete this second test within 48 hours so we can provide a full diagnosis of your child's math situation.</p>
                     <p><strong>Link expires:</strong> {deadline_str}</p>
                 </div>
@@ -416,7 +416,7 @@ def send_first_test_email(data):
                 <div style="text-align: center; margin: 30px 0;">
                     <a href="{second_test_link}"
                        style="display: inline-block; background-color: #2563eb; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
-                        Take {data['test_curriculum']} Year {next_test_grade} Test Now
+                        Take {data['test_curriculum']} {next_test_label} Test Now
                     </a>
                 </div>
 
@@ -429,7 +429,7 @@ def send_first_test_email(data):
         </html>
         """
 
-        subject = f"⏰ {student_first_name}'s Results: Complete {data['test_curriculum']} Year {next_test_grade} Within 48 Hours"
+        subject = f"⏰ {student_first_name}'s Results: Complete {data['test_curriculum']} {next_test_label} Within 48 Hours" 
         to_name = data.get("parent_name", "Parent")
 
         return send_brevo_email(data["parent_email"], to_name, subject, html_content)
@@ -455,8 +455,24 @@ def send_combined_results_email(first_test, second_test):
             "test2_score": second_test.get("test2_score", second_test.get("percentage", "N/A")),
             "test2_raw": second_test.get("test2_raw") or f"{second_test.get('score', 0)}/{second_test.get('maxScore', second_test.get('total', 0))}",
         }
+            # Singapore-specific grade label formatter
+            def singapore_level_label(curriculum, grade):
+                try:
+                    grade_num = int(str(grade).strip())
+                except:
+                    return f"Year {grade}"
 
-        html_content = f"""
+                if str(curriculum).strip().lower() == "singapore":
+                    if grade_num <= 6:
+                        return f"Primary {grade_num}"
+                    return f"Secondary {grade_num - 6}"
+
+                return f"Year {grade_num}"
+
+            completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
+            next_test_label = singapore_level_label(data["test_curriculum"], next_test_grade)
+
+            html_content = f"""
         <!DOCTYPE html>
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
