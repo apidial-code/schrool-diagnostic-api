@@ -9,9 +9,8 @@ Features:
 - /api/continue endpoint for restoring student/session identity
 - First test email, combined results email, and follow-up email
 """
-from flask_cors import CORS, cross_origin
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 import os
 from datetime import datetime, timedelta
 import requests
@@ -19,6 +18,20 @@ import sqlite3
 import secrets
 from contextlib import contextmanager
 
+def singapore_level_label(curriculum, grade):
+    try:
+        grade_num = int(str(grade).strip())
+    except:
+        return f"Year {grade}"
+
+    if str(curriculum).strip().lower() == "singapore":
+        if grade_num <= 6:
+            return f"Primary {grade_num}"
+        return f"Secondary {grade_num - 6}"
+
+    return f"Year {grade_num}"
+
+app = Flask(__name__)
 # ============================================================================
 # FLASK APP INITIALIZATION
 # ============================================================================
@@ -455,19 +468,6 @@ def send_combined_results_email(first_test, second_test):
             "test2_score": second_test.get("test2_score", second_test.get("percentage", "N/A")),
             "test2_raw": second_test.get("test2_raw") or f"{second_test.get('score', 0)}/{second_test.get('maxScore', second_test.get('total', 0))}",
         }
-            # Singapore-specific grade label formatter
-            def singapore_level_label(curriculum, grade):
-                try:
-                    grade_num = int(str(grade).strip())
-                except:
-                    return f"Year {grade}"
-
-                if str(curriculum).strip().lower() == "singapore":
-                    if grade_num <= 6:
-                        return f"Primary {grade_num}"
-                    return f"Secondary {grade_num - 6}"
-
-                return f"Year {grade_num}"
 
             completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
             next_test_label = singapore_level_label(data["test_curriculum"], next_test_grade)
