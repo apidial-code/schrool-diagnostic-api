@@ -495,24 +495,24 @@ def send_combined_results_email(first_test, second_test):
             "test2_score": second_test.get("test2_score", second_test.get("percentage", "N/A")),
             "test2_raw": second_test.get("test2_raw") or f"{second_test.get('score', 0)}/{second_test.get('maxScore', second_test.get('total', 0))}",
         }
-        curriculum = (
-    data.get("test_curriculum")
-    or first_test.get("test_curriculum")
-    or second_test.get("test_curriculum")
-    or "Singapore"
-)
+                    curriculum = (
+            data.get("test_curriculum")
+            or first_test.get("test_curriculum")
+            or second_test.get("test_curriculum")
+            or "Singapore"
+        )
 
-completed_test_label = singapore_level_label(
-    curriculum,
-    first_test.get("test_grade") or first_test.get("grade")
-)
+        completed_test_label = singapore_level_label(
+            curriculum,
+            first_test.get("test_grade") or first_test.get("grade")
+        )
 
-next_test_label = singapore_file_label(
-    second_test.get("test_name"),
-    curriculum,
-    second_test.get("test_grade") or second_test.get("grade")
-)
-        
+        next_test_label = singapore_file_label(
+            second_test.get("test_name"),
+            curriculum,
+            second_test.get("test_grade") or second_test.get("grade")
+        )
+
         html_content = f"""
         
         <!DOCTYPE html>
