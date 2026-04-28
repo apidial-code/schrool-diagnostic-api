@@ -469,10 +469,9 @@ def send_combined_results_email(first_test, second_test):
             "test2_raw": second_test.get("test2_raw") or f"{second_test.get('score', 0)}/{second_test.get('maxScore', second_test.get('total', 0))}",
         }
 
-            completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
-            next_test_label = singapore_level_label(data["test_curriculum"], next_test_grade)
-
-            html_content = f"""
+    completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
+    next_test_label = singapore_level_label(data["test_curriculum"], next_test_grade)
+    html_content = f"""
         <!DOCTYPE html>
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
