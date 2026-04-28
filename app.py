@@ -532,11 +532,11 @@ def send_combined_results_email(first_test, second_test):
                 <div style="background-color: #ecfdf5; padding: 25px; border-radius: 8px; border-left: 4px solid #059669; margin-bottom: 25px;">
                     <h2 style="color: #065f46; margin-top: 0; font-size: 20px;">Complete Results Summary</h2>
 
-                    <p><strong>Test 1:</strong> {data.get('test1_name')} -
+                    <p><strong>Test 1:</strong> {curriculum} {completed_test_label} -
                     <strong style="color: #059669;">{data.get('test1_score')}%</strong></p>
                     <p style="font-size: 14px; color: #666; margin-left: 20px;">Raw Score: {data.get('test1_raw')}</p>
 
-                    <p style="margin-top: 20px;"><strong>Test 2:</strong> {data.get('test2_name')} -
+                    <p style="margin-top: 20px;"><strong>Test 2:</strong> {curriculum} {next_test_label} -
                     <strong style="color: #059669;">{data.get('test2_score')}%</strong></p>
                     <p style="font-size: 14px; color: #666; margin-left: 20px;">Raw Score: {data.get('test2_raw')}</p>
                 </div>
