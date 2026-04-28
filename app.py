@@ -30,7 +30,7 @@ def singapore_level_label(curriculum, grade):
         return f"Secondary {grade_num - 6}"
 
     return f"Year {grade_num}"
-    def singapore_file_label(filename, fallback_curriculum, fallback_grade):
+def singapore_file_label(filename, fallback_curriculum, fallback_grade):
     filename = str(filename or "").lower()
     curriculum = str(fallback_curriculum or "").strip().lower()
 
