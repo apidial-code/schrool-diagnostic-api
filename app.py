@@ -421,7 +421,7 @@ def send_first_test_email(data):
             data.get("next_test_file"),
             data["test_curriculum"],
             next_test_grade
-)
+        )
         
         html_content = f"""
         
@@ -510,14 +510,28 @@ def send_combined_results_email(first_test, second_test):
             or first_test.get("first_test_year")
         )
 
-        next_test_label = singapore_file_label(
-            second_test.get("next_test_file")
-            or second_test.get("test_file")
-            or second_test.get("test_name"),
-            curriculum,
-            second_test.get("test_grade")
-            or second_test.get("grade")
-        )
+               second_grade = second_test.get("test_grade") or second_test.get("grade")
+
+        if str(curriculum).strip().lower() == "singapore":
+            first_grade = (
+                first_test.get("test_grade")
+                or first_test.get("grade")
+                or first_test.get("test1_year")
+                or first_test.get("first_test_year")
+            )
+
+            if str(second_grade).isdigit() and int(second_grade) <= 4 and str(first_grade).isdigit() and int(first_grade) >= 6:
+                next_test_label = f"Secondary {second_grade}"
+            else:
+                next_test_label = singapore_file_label(
+                    second_test.get("next_test_file")
+                    or second_test.get("test_file")
+                    or second_test.get("test_name"),
+                    curriculum,
+                    second_grade
+                )
+        else:
+            next_test_label = singapore_level_label(curriculum, second_grade)
 
         html_content = f"""
         
