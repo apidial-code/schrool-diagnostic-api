@@ -30,6 +30,22 @@ def singapore_level_label(curriculum, grade):
         return f"Secondary {grade_num - 6}"
 
     return f"Year {grade_num}"
+    def singapore_file_label(filename, fallback_curriculum, fallback_grade):
+    filename = str(filename or "").lower()
+    curriculum = str(fallback_curriculum or "").strip().lower()
+
+    if curriculum != "singapore":
+        return singapore_level_label(fallback_curriculum, fallback_grade)
+
+    if "singapore-primary" in filename:
+        grade = filename.split("singapore-primary")[1].split("-")[0]
+        return f"Primary {grade}"
+
+    if "singapore-sec" in filename:
+        grade = filename.split("singapore-sec")[1].split("-")[0]
+        return f"Secondary {grade}"
+
+    return singapore_level_label(fallback_curriculum, fallback_grade)
 
 app = Flask(__name__)
 # ============================================================================
@@ -398,7 +414,11 @@ def send_first_test_email(data):
         color = performance["color"]
         
         completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
-        next_test_label = singapore_level_label(data["test_curriculum"], next_test_grade)
+        next_test_label = singapore_file_label(
+            data.get("next_test_file"),
+            data["test_curriculum"],
+            next_test_grade
+)
         
         html_content = f"""
         
@@ -472,8 +492,23 @@ def send_combined_results_email(first_test, second_test):
             "test2_score": second_test.get("test2_score", second_test.get("percentage", "N/A")),
             "test2_raw": second_test.get("test2_raw") or f"{second_test.get('score', 0)}/{second_test.get('maxScore', second_test.get('total', 0))}",
         }
-        completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
-        next_test_label = singapore_level_label(data["test_curriculum"], next_test_grade)
+        curriculum = (
+    data.get("test_curriculum")
+    or first_test.get("test_curriculum")
+    or second_test.get("test_curriculum")
+    or "Singapore"
+)
+
+completed_test_label = singapore_level_label(
+    curriculum,
+    first_test.get("test_grade") or first_test.get("grade")
+)
+
+next_test_label = singapore_file_label(
+    second_test.get("test_name"),
+    curriculum,
+    second_test.get("test_grade") or second_test.get("grade")
+)
         
         html_content = f"""
         
