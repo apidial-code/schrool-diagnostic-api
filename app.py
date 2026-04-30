@@ -403,13 +403,21 @@ def send_first_test_email(data):
                 f"{FRONTEND_URL}/schrool-fresher/"
                 f"{next_test_file}"
                 f"?token={token}"
-    )
+        )
         else:
+            if curriculum_slug == "singapore":
+                if next_test_grade <= 6:
+                    fallback_file = f"singapore-primary{next_test_grade}-math-test.html"
+                else:
+                    fallback_file = f"singapore-sec{next_test_grade - 6}-math-test.html"
+            else:
+                fallback_file = f"{curriculum_slug}-year{next_test_grade}-math-test.html"
+
             second_test_link = (
                 f"{FRONTEND_URL}/schrool-fresher/"
-                f"{curriculum_slug}-year{next_test_grade}-math-test.html"
+                f"{fallback_file}"
                 f"?token={token}"
-    )
+        )
             
 
         interpretation = get_interpretation(int(data["percentage"]))
