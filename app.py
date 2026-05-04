@@ -665,6 +665,7 @@ def submit_test():
         token = data.get("token")
         school_grade_raw = data.get("school_grade")
         send_email_only = bool(data.get("send_email_only", False))
+        single_test_final = bool(data.get("single_test_final", False))
         required_fields = [
             "parent_email",
             "student_name",
@@ -720,15 +721,17 @@ def submit_test():
         if send_email_only:
             expected_second_year = int(data.get("next_test_grade", 0) or 0)
 
-            if not expected_second_year:
+            if not expected_second_year and not single_test_final:
                 return jsonify({
                     "success": False,
                     "error": "Missing next_test_grade for email-only flow"
                 }), 400
 
-            data["next_test_grade"] = expected_second_year
+            if expected_second_year:
+                data["next_test_grade"] = expected_second_year
 
             # store or refresh first test record before sending email
+            
             store_first_test(student_key, data, expected_second_year)
 
             result = send_first_test_email(data)
