@@ -386,19 +386,22 @@ def send_first_test_email(data):
             "student_name": data["student_name"],
             "test_curriculum": data["test_curriculum"],
             "first_test_year": int(data["test_grade"]),
-            "expected_second_year": int(data["next_test_grade"]),
+            "expected_second_year": int(data.get("next_test_grade") or 0),
             "expires_at": (datetime.now() + timedelta(hours=48)).isoformat(),
         }
 
         curriculum_slug = data["test_curriculum"].strip().lower()
-        next_test_grade = int(data["next_test_grade"])
+        next_test_grade = int(data.get("next_test_grade") or 0)
+        single_test_final = bool(data.get("single_test_final", False))
 
         next_test_file = data.get("next_test_file")
         
         print("NEXT TEST FILE RECEIVED:", data.get("next_test_file"))
         print("NEXT TEST GRADE RECEIVED:", data.get("next_test_grade"))
         
-        if next_test_file:
+       if single_test_final:
+            second_test_link = None
+       elif next_test_file:
             second_test_link = (
                 f"{FRONTEND_URL}/schrool-fresher/"
                 f"{next_test_file}"
@@ -430,7 +433,21 @@ def send_first_test_email(data):
             data["test_curriculum"],
             next_test_grade
         )
-        
+        next_test_section = "" if single_test_final else f"""
+        <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
+            <h3 style="color: #92400e; margin-top: 0; font-size: 18px;">Next Test to Complete</h3>
+            <p><strong>{data['test_curriculum']} {next_test_label}</strong></p>
+            <p>Please complete this second test within 48 hours so we can provide a full diagnosis of your child's math situation.</p>
+            <p><strong>Link expires:</strong> {deadline_str}</p>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{second_test_link}"
+               style="display: inline-block; background-color: #2563eb; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
+                Take {data['test_curriculum']} {next_test_label} Test Now
+            </a>
+        </div>
+"""
         html_content = f"""
         
         <!DOCTYPE html>
@@ -454,19 +471,7 @@ def send_first_test_email(data):
                     <p><strong>Performance Assessment:</strong> {interpretation}</p>
                 </div>
 
-                <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
-                    <h3 style="color: #92400e; margin-top: 0; font-size: 18px;">Next Test to Complete</h3>
-                    <p><strong>{data['test_curriculum']} {next_test_label}</strong></p>
-                    <p>Please complete this second test within 48 hours so we can provide a full diagnosis of your child's math situation.</p>
-                    <p><strong>Link expires:</strong> {deadline_str}</p>
-                </div>
-
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="{second_test_link}"
-                       style="display: inline-block; background-color: #2563eb; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
-                        Take {data['test_curriculum']} {next_test_label} Test Now
-                    </a>
-                </div>
+                {next_test_section if next_test_section else ""}
 
                 <p style="font-size: 14px; color: #666;">
                     Best regards,<br>
