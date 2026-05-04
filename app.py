@@ -346,7 +346,7 @@ def send_brevo_email(to_email, to_name, subject, html_content):
             "htmlContent": html_content,
         }
 
-            headers = {
+        headers = {
             "accept": "application/json",
             "api-key": BREVO_API_KEY,
             "content-type": "application/json",
