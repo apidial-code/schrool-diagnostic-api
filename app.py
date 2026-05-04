@@ -346,7 +346,7 @@ def send_brevo_email(to_email, to_name, subject, html_content):
             "htmlContent": html_content,
         }
 
-        headers = {
+            headers = {
             "accept": "application/json",
             "api-key": BREVO_API_KEY,
             "content-type": "application/json",
@@ -447,7 +447,7 @@ def send_first_test_email(data):
                 Take {data['test_curriculum']} {next_test_label} Test Now
             </a>
         </div>
-"""
+        """
         html_content = f"""
         
         <!DOCTYPE html>
@@ -487,12 +487,12 @@ def send_first_test_email(data):
 
         return send_brevo_email(data["parent_email"], to_name, subject, html_content)
 
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
 
-def send_combined_results_email(first_test, second_test):
-    try:
+        def send_combined_results_email(first_test, second_test):
+            try:
         data = {
             "parent_name": second_test.get("parent_name") or first_test.get("parent_name", "Parent"),
             "parent_email": second_test.get("parent_email") or first_test.get("parent_email"),
