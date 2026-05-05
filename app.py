@@ -374,6 +374,7 @@ def send_first_test_email(data):
         color = "#e74c3c"
         completed_test_label = f"Year {data.get('test_grade', '')}"
         next_test_label = "Next Test"
+        interpretation = "Your child needs significant support. Consider working with a tutor to build foundational skills."
         student_full_name = data["student_name"]
         student_first_name = student_full_name.split()[0] if student_full_name else "Student"
 
