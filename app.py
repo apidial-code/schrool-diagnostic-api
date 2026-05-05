@@ -492,8 +492,9 @@ def send_first_test_email(data):
             subject,
             html_content
         )
-    except Exception as e:
-        return {"success": False, "error": f"Failed to send first test email: {str(e)}"}
+        except Exception as e:
+            print("FIRST TEST EMAIL ERROR:", str(e), flush=True)
+            return {"success": False, "error": f"Failed to send first test email: {str(e)}"}
 
 def send_combined_results_email(first_test, second_test):
     try:
