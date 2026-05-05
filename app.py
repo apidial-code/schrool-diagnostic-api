@@ -371,6 +371,7 @@ def send_brevo_email(to_email, to_name, subject, html_content):
 
 def send_first_test_email(data):
     try:
+        color = "#e74c3c"
         student_full_name = data["student_name"]
         student_first_name = student_full_name.split()[0] if student_full_name else "Student"
 
