@@ -425,7 +425,7 @@ def send_first_test_email(data):
 
             interpretation = get_interpretation(int(data["percentage"]))
             performance = get_performance_level(int(data["percentage"]))
-            color = performance["color"]
+            color = performance.get("color", "#e74c3c") if isinstance(performance, dict) else "#e74c3c"
 
             completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
 
