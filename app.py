@@ -428,7 +428,9 @@ def send_first_test_email(data):
             performance = get_performance_level(int(data["percentage"]))
             color = performance.get("color", "#e74c3c") if isinstance(performance, dict) else "#e74c3c"
 
-            completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
+            completed_test_label = f"Year {data['test_grade']}"
+            if curriculum_slug == "singapore":
+                completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
 
             next_test_label = f"Year {next_test_grade}" if next_test_grade else "Next Test"
 
