@@ -485,8 +485,8 @@ def send_first_test_email(data):
 
         return send_brevo_email(data["parent_email"], to_name, subject, html_content)
 
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
 
 
         def send_combined_results_email(first_test, second_test):
