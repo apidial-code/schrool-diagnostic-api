@@ -399,29 +399,28 @@ def send_first_test_email(data):
         print("NEXT TEST FILE RECEIVED:", data.get("next_test_file"))
         print("NEXT TEST GRADE RECEIVED:", data.get("next_test_grade"))
         
-       if single_test_final:
-            second_test_link = None
-       elif next_test_file:
-            second_test_link = (
-                f"{FRONTEND_URL}/schrool-fresher/"
-                f"{next_test_file}"
-                f"?token={token}"
-        )
-        else:
-            if curriculum_slug == "singapore":
-                if next_test_grade <= 6:
-                    fallback_file = f"singapore-primary{next_test_grade}-math-test.html"
+               if single_test_final:
+                   second_test_link = None
+               elif next_test_file:
+                   second_test_link = (
+                       f"{FRONTEND_URL}/schrool-fresher/"
+                       f"{next_test_file}"
+                       f"?token={token}"
+                    )
                 else:
-                    fallback_file = f"singapore-sec{next_test_grade - 6}-math-test.html"
-            else:
-                fallback_file = f"{curriculum_slug}-year{next_test_grade}-math-test.html"
+                    if curriculum_slug == "singapore":
+                        if next_test_grade <= 6:
+                            fallback_file = f"singapore-primary{next_test_grade}-math-test.html"
+                        else:
+                            fallback_file = f"singapore-sec{next_test_grade - 6}-math-test.html"
+                    else:
+                        fallback_file = f"{curriculum_slug}-year{next_test_grade}-math-test.html"
 
-            second_test_link = (
-                f"{FRONTEND_URL}/schrool-fresher/"
-                f"{fallback_file}"
-                f"?token={token}"
-        )
-            
+                    second_test_link = (
+                        f"{FRONTEND_URL}/schrool-fresher/"
+                        f"{fallback_file}"
+                        f"?token={token}"
+                    )
 
         interpretation = get_interpretation(int(data["percentage"]))
         performance = get_performance_level(int(data["percentage"]))
