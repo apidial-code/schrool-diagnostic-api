@@ -435,7 +435,7 @@ def send_first_test_email(data):
                     next_test_grade
                 )
             else:
-                next_test_label = f"Year {next_test_grade}"
+                next_test_label = f"Year {next_test_grade}" if next_test_grade else "Next Test"
         next_test_section = "" if single_test_final else f"""
         <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
             <h3 style="color: #92400e; margin-top: 0; font-size: 18px;">Next Test to Complete</h3>
