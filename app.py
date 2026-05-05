@@ -480,17 +480,18 @@ def send_first_test_email(data):
         </html>
         """
 
-        subject = f"⏰ {student_first_name}'s Results: Complete {data['test_curriculum']} {next_test_label} Within 48 Hours" 
-        to_name = data.get("parent_name", "Parent")
+        subject = f"⏰ {data['test_curriculum']} Test 1 Complete - Next Test Ready"
+        return send_email(
+            data["parent_email"],
+            data.get("parent_name", "Parent"),
+            subject,
+            html_content
+        )
+    except Exception as e:
+        return {"success": False, "error": f"Failed to send first test email: {str(e)}"}
 
-        return send_brevo_email(data["parent_email"], to_name, subject, html_content)
-
-            except Exception as e:
-                return {"success": False, "error": str(e)}
-
-
-        def send_combined_results_email(first_test, second_test):
-            try:
+def send_combined_results_email(first_test, second_test):
+    try:
         data = {
             "parent_name": second_test.get("parent_name") or first_test.get("parent_name", "Parent"),
             "parent_email": second_test.get("parent_email") or first_test.get("parent_email"),
