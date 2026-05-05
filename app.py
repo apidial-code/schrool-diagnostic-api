@@ -394,7 +394,8 @@ def send_first_test_email(data):
         next_test_grade = int(data.get("next_test_grade") or 0)
         single_test_final = bool(data.get("single_test_final", False))
         next_test_file = data.get("next_test_file")
-
+        if not next_test_file and next_test_grade:
+        next_test_file = f"{curriculum_slug}-year{next_test_grade}-math-test.html"
         print("NEXT TEST FILE RECEIVED:", data.get("next_test_file"))
         print("NEXT TEST GRADE RECEIVED:", data.get("next_test_grade"))
 
