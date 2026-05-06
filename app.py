@@ -494,7 +494,7 @@ def send_first_test_email(data):
         """
 
         subject = f"⏰ {data['test_curriculum']} Test 1 Complete - Next Test Ready"
-        return send_email(
+        return send_brevo_email(
             data["parent_email"],
             data.get("parent_name", "Parent"),
             subject,
