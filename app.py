@@ -804,22 +804,15 @@ def submit_test():
                     "stored_only": True,
                 }), 200
 
-            # delayed flow from backend, if ever used directly
-            result = send_first_test_email(data)
-
-            if result.get("success"):
-                return jsonify({
-                    "success": True,
-                    "message": "First test email sent successfully",
-                    "email": data["parent_email"],
-                    "test_number": 1
-                }), 200
-
+            # first test was stored successfully
+            # do not send first email here
             return jsonify({
-                "success": False,
-                "error": result.get("error", "Failed to send email"),
-            }), 500
-
+                "success": True,
+                "message": "First test stored successfully without email",
+                "email": data["parent_email"],
+                "test_number": 1,
+                "stored_only": True
+            }), 200
         # SECOND TEST
         first_test = get_first_test(student_key)
         if not first_test:
