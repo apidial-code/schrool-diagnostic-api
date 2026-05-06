@@ -405,7 +405,7 @@ def send_first_test_email(data):
         print("NEXT TEST FILE RECEIVED:", next_test_file)
         print("NEXT TEST GRADE RECEIVED:", next_test_grade)
 
-        if single_test_final:
+        if False:
             second_test_link = None
         elif next_test_file:
             second_test_link = (
