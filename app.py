@@ -428,23 +428,23 @@ def send_first_test_email(data):
                 f"?token={token}"
             )
 
-            interpretation = get_interpretation(int(data["percentage"]))
-            performance = get_performance_level(int(data["percentage"]))
-            color = performance.get("color", "#e74c3c") if isinstance(performance, dict) else "#e74c3c"
+        interpretation = get_interpretation(int(data["percentage"]))
+        performance = get_performance_level(int(data["percentage"]))
+        color = performance.get("color", "#e74c3c") if isinstance(performance, dict) else "#e74c3c"
 
-            completed_test_label = f"Year {data['test_grade']}"
-            if curriculum_slug == "singapore":
-                completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
+        completed_test_label = f"Year {data['test_grade']}"
+        if curriculum_slug == "singapore":
+            completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
 
-            next_test_label = f"Year {next_test_grade}" if next_test_grade else "Next Test"
+        next_test_label = f"Year {next_test_grade}" if next_test_grade else "Next Test"
 
-            if curriculum_slug == "singapore":
-                next_test_label = singapore_file_label(
-                    data.get("next_test_file"),
-                    data["test_curriculum"],
-                    next_test_grade
-                )
-            next_test_section = f"""
+        if curriculum_slug == "singapore":
+            next_test_label = singapore_file_label(
+                data.get("next_test_file"),
+                data["test_curriculum"],
+                next_test_grade
+            )
+        next_test_section = f"""
         <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
             <h3 style="color: #92400e; margin-top: 0; font-size: 18px;">Next Test to Complete</h3>
             <p><strong>{data['test_curriculum']} {next_test_label}</strong></p>
