@@ -503,7 +503,15 @@ def send_first_test_email(data):
     except Exception as e:
         print("FIRST TEST EMAIL ERROR:", str(e), flush=True)
         return {"success": False, "error": f"Failed to send first test email: {str(e)}"}
+def get_combined_observation(p1, p2):
+    avg = (p1 + p2) / 2
 
+    if avg < 40:
+        return "Across both tests, the student is showing gaps in foundational understanding. This often happens when earlier concepts have not fully settled, making it difficult to build reliably on top."
+    elif avg < 75:
+        return "The student shows a developing understanding across the two levels, with some areas secure and others less consistent. This usually indicates that key concepts are partially understood but not yet fully integrated."
+    else:
+        return "The student demonstrates a solid grasp of the material across both levels. The next step is to confirm how this understanding holds as the level of challenge increases."
 def send_combined_results_email(first_test, second_test):
     try:
         data = {
@@ -558,7 +566,10 @@ def send_combined_results_email(first_test, second_test):
                 )
         else:
             next_test_label = singapore_level_label(curriculum, second_grade)
-
+observation = get_combined_observation(
+    float(str(data.get("test1_score", "0")).replace('%','') or 0),
+    float(str(data.get("test2_score", "0")).replace('%','') or 0)
+)
         html_content = f"""
         
         <!DOCTYPE html>
@@ -586,19 +597,42 @@ def send_combined_results_email(first_test, second_test):
                     <strong style="color: #059669;">{data.get('test2_score')}%</strong></p>
                     <p style="font-size: 14px; color: #666; margin-left: 20px;">Raw Score: {data.get('test2_raw')}</p>
                 </div>
+                <div style="background-color: #f9fafb; padding: 25px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #059669;">
+    
+    <h3 style="color: #065f46; margin-top: 0;">Observation</h3>
+    
+    <p style="font-size: 14px; color: #444;">
+        {observation}
+    </p>
 
-                <div style="background-color: #dbeafe; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-                    <h3 style="color: #1e40af; margin-top: 0; font-size: 18px;">What's Next?</h3>
-                    <p style="color: #1e3a8a;">
-                        Our team will analyze these results and send you personalized recommendations within the next <strong>72 hours</strong>.
-                    </p>
-                </div>
+    <br>
 
-                <p style="font-size: 14px; color: #666;">
-                    Best regards,<br>
-                    <strong>Richard & The Schrool Team</strong>
-                </p>
-            </div>
+    <h3 style="color: #065f46;">What this means</h3>
+
+    <p style="font-size: 14px; color: #444;">
+        The results are not only a measure of performance, but an indication of how stable the underlying understanding is.
+        <br><br>
+        In many cases, students can appear to cope with a topic, but still rely on fragile methods that do not hold as the level increases.
+    </p>
+
+    <br>
+
+    <p style="font-size: 14px; color: #444;">
+        The purpose of this diagnostic is to identify these patterns early, before they become more difficult to address at higher levels.
+    </p>
+
+    <br>
+
+    <p style="font-size: 14px; color: #444;">
+        If you would like to understand how these results translate into your child’s current level, you can select a suitable time this week and we will go through them with you.
+    </p>
+
+</div>
+
+<p style="font-size: 14px; color: #666;">
+    Best regards,<br>
+    <strong>Richard & The Schrool Team</strong>
+</p>
         </body>
         </html>
         """
