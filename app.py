@@ -592,6 +592,48 @@ def send_consultant_booking_email(booking):
         subject,
         html_content
     )
+def send_parent_booking_confirmation_email(booking):
+    parent_email = booking.get("parent_email", "")
+    parent_name = booking.get("parent_name", "Parent")
+    student_name = booking.get("student_name", "your child")
+    booking_date = booking.get("booking_date", "")
+    booking_time = booking.get("booking_time", "")
+
+    if not parent_email:
+        return {"success": False, "error": "Parent email missing"}
+
+    html_content = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 650px; margin: 0 auto; padding: 20px;">
+        <h2 style="color:#2563eb;">Your Schrool Results Call is Confirmed</h2>
+
+        <p>Dear {parent_name},</p>
+
+        <p>Your call to go through {student_name}'s diagnostic results has been booked.</p>
+
+        <div style="background:#f9fafb; border-left:4px solid #2563eb; padding:18px; border-radius:8px; margin:25px 0;">
+            <p><strong>Date:</strong> {booking_date}</p>
+            <p><strong>Time:</strong> {booking_time}</p>
+        </div>
+
+        <p>During the call, we will go through what the diagnostic results suggest about {student_name}'s current level and answer any questions you may have.</p>
+
+        <p>Best regards,<br>
+        <strong>Richard & The Schrool Team</strong></p>
+    </body>
+    </html>
+    """
+
+    subject = f"Your Schrool Results Call is Confirmed - {student_name}"
+
+    return send_brevo_email(
+        parent_email,
+        parent_name,
+        subject,
+        html_content
+    )
+
+
 def send_combined_results_email(first_test, second_test):
     try:
         data = {
@@ -1143,6 +1185,9 @@ def book_slot():
 
         # Send lead profile to manager or assigned consultant
         send_consultant_booking_email(data)
+
+        # Send confirmation to parent
+        send_parent_booking_confirmation_email(data)
 
         return jsonify({
             "success": True,
