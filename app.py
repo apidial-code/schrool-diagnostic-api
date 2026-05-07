@@ -566,11 +566,13 @@ def send_combined_results_email(first_test, second_test):
                 )
         else:
             next_test_label = singapore_level_label(curriculum, second_grade)
-observation = get_combined_observation(
-    float(str(data.get("test1_score", "0")).replace('%','') or 0),
-    float(str(data.get("test2_score", "0")).replace('%','') or 0)
-)
-        html_content = f"""
+
+            observation = get_combined_observation(
+                float(str(data.get("test1_score", "0")).replace('%','') or 0),
+                float(str(data.get("test2_score", "0")).replace('%','') or 0)
+            )
+            
+            html_content = f"""
         
         <!DOCTYPE html>
         <html>
