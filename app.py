@@ -57,6 +57,8 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 
+DB_PATH = "/tmp/test_results.db"
+
 CORS(app, resources={
     r"/api/*": {
         "origins": [
