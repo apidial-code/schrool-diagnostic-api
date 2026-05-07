@@ -512,6 +512,84 @@ def get_combined_observation(p1, p2):
         return "The student shows a developing understanding across the two levels, with some areas secure and others less consistent. This usually indicates that key concepts are partially understood but not yet fully integrated."
     else:
         return "The student demonstrates a solid grasp of the material across both levels. The next step is to confirm how this understanding holds as the level of challenge increases."
+
+def send_consultant_booking_email(booking):
+    lead_manager_email = os.environ.get("LEAD_MANAGER_EMAIL", "kineticscls@gmail.com")
+    consultant_email = booking.get("consultant_email") or os.environ.get("CONSULTANT_EMAIL", "")
+
+    recipient_email = consultant_email if consultant_email else lead_manager_email
+
+    parent_name = booking.get("parent_name", "Parent")
+    parent_email = booking.get("parent_email", "")
+    phone = booking.get("phone", "")
+    student_name = booking.get("student_name", "Student")
+    school_grade = booking.get("school_grade", "")
+    curriculum = booking.get("test_curriculum", "")
+    booking_date = booking.get("booking_date", "")
+    booking_time = booking.get("booking_time", "")
+
+    html_content = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 700px; margin: 0 auto; padding: 20px;">
+
+        <h2 style="color:#1f2937;">New Consultation Booking</h2>
+
+        <p>A parent has requested a call after completing the Schrool diagnostic.</p>
+
+        <hr>
+
+        <h3>Customer Profile</h3>
+
+        <p><strong>Parent:</strong> {parent_name}</p>
+        <p><strong>Email:</strong> {parent_email}</p>
+        <p><strong>Phone:</strong> {phone}</p>
+        <p><strong>Student:</strong> {student_name}</p>
+        <p><strong>School Year:</strong> {school_grade}</p>
+        <p><strong>Curriculum:</strong> {curriculum}</p>
+
+        <hr>
+
+        <h3>Parent’s Situation</h3>
+
+        <p><strong>Current performance:</strong> {booking.get("performance", "Not provided")}</p>
+        <p><strong>Goal for next 90 days:</strong> {booking.get("goal", "Not provided")}</p>
+        <p><strong>Main obstacle:</strong> {booking.get("obstacle", "Not provided")}</p>
+        <p><strong>What they have tried:</strong> {booking.get("attempts", "Not provided")}</p>
+        <p><strong>Time available weekly:</strong> {booking.get("time_commitment", "Not provided")}</p>
+        <p><strong>Monthly budget:</strong> {booking.get("budget", "Not provided")}</p>
+        <p><strong>Urgency:</strong> {booking.get("urgency", "Not provided")}</p>
+
+        <hr>
+
+        <h3>Additional Notes</h3>
+        <p>{booking.get("notes", "No additional notes provided.")}</p>
+
+        <hr>
+
+        <h3>Booked Call</h3>
+        <p><strong>Date:</strong> {booking_date}</p>
+        <p><strong>Time:</strong> {booking_time}</p>
+
+        <hr>
+
+        <h3>Consultant Guidance</h3>
+        <p>
+            Focus first on the parent’s stated concern, then connect it gently to the diagnostic results.
+            Avoid starting with a programme pitch. Begin by clarifying the child’s current level and the pattern shown in the results.
+        </p>
+
+    </body>
+    </html>
+    """
+
+    subject = f"New Consultation Booking - {student_name}"
+
+    return send_brevo_email(
+        recipient_email,
+        "Schrool System",
+        subject,
+        html_content
+    )
 def send_combined_results_email(first_test, second_test):
     try:
         data = {
@@ -571,7 +649,7 @@ def send_combined_results_email(first_test, second_test):
                 float(str(data.get("test1_score", "0")).replace('%','') or 0),
                 float(str(data.get("test2_score", "0")).replace('%','') or 0)
             )
-            
+
             html_content = f"""
         
         <!DOCTYPE html>
@@ -907,7 +985,176 @@ def internal_error(error):
 # ============================================================================
 # APPLICATION ENTRY POINT
 # ============================================================================
+# ============================================================
+# BOOKING SYSTEM
+# ============================================================
 
+def init_booking_table():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS bookings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            parent_name TEXT,
+            parent_email TEXT,
+            phone TEXT,
+            student_name TEXT,
+            school_grade TEXT,
+            test_curriculum TEXT,
+            booking_date TEXT,
+            booking_time TEXT,
+            performance TEXT,
+            goal TEXT,
+            obstacle TEXT,
+            attempts TEXT,
+            time_commitment TEXT,
+            budget TEXT,
+            urgency TEXT,
+            notes TEXT,
+            consultant_email TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+@app.route("/api/booking-slots", methods=["GET"])
+def get_booking_slots():
+    try:
+        init_booking_table()
+
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT booking_date, booking_time
+            FROM bookings
+        """)
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        booked_slots = [
+            {
+                "booking_date": row[0],
+                "booking_time": row[1]
+            }
+            for row in rows
+        ]
+
+        return jsonify({
+            "success": True,
+            "booked_slots": booked_slots
+        }), 200
+
+    except Exception as e:
+        print("BOOKING SLOTS ERROR:", str(e), flush=True)
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route("/api/book-slot", methods=["POST", "OPTIONS"])
+def book_slot():
+    if request.method == "OPTIONS":
+        return jsonify({"success": True}), 200
+
+    try:
+        init_booking_table()
+
+        data = request.get_json() or {}
+
+        booking_date = data.get("booking_date")
+        booking_time = data.get("booking_time")
+
+        if not booking_date or not booking_time:
+            return jsonify({
+                "success": False,
+                "error": "Missing booking date or time"
+            }), 400
+
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        # Prevent double booking
+        cursor.execute("""
+            SELECT id FROM bookings
+            WHERE booking_date = ? AND booking_time = ?
+        """, (booking_date, booking_time))
+
+        existing = cursor.fetchone()
+
+        if existing:
+            conn.close()
+            return jsonify({
+                "success": False,
+                "error": "This slot has already been booked"
+            }), 409
+
+        cursor.execute("""
+            INSERT INTO bookings (
+                parent_name,
+                parent_email,
+                phone,
+                student_name,
+                school_grade,
+                test_curriculum,
+                booking_date,
+                booking_time,
+                performance,
+                goal,
+                obstacle,
+                attempts,
+                time_commitment,
+                budget,
+                urgency,
+                notes,
+                consultant_email
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            data.get("parent_name", ""),
+            data.get("parent_email", ""),
+            data.get("phone", ""),
+            data.get("student_name", ""),
+            data.get("school_grade", ""),
+            data.get("test_curriculum", ""),
+            booking_date,
+            booking_time,
+            data.get("performance", ""),
+            data.get("goal", ""),
+            data.get("obstacle", ""),
+            data.get("attempts", ""),
+            data.get("time_commitment", ""),
+            data.get("budget", ""),
+            data.get("urgency", ""),
+            data.get("notes", ""),
+            data.get("consultant_email", "")
+        ))
+
+        conn.commit()
+        conn.close()
+
+        # Send lead profile to manager or assigned consultant
+        send_consultant_booking_email(data)
+
+        return jsonify({
+            "success": True,
+            "message": "Booking confirmed",
+            "booking_date": booking_date,
+            "booking_time": booking_time
+        }), 200
+
+    except Exception as e:
+        print("BOOK SLOT ERROR:", str(e), flush=True)
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
