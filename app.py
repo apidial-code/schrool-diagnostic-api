@@ -1300,8 +1300,6 @@ def book_slot():
             data.get("consultant_email", "")
         ))
 
-        conn.commit()
-        conn.close()
 
         # Send lead profile to manager or assigned consultant
         send_consultant_booking_email(data)
