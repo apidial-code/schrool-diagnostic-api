@@ -1181,8 +1181,8 @@ try:
 except Exception:
     pass
 
-    conn.commit()
-    conn.close()
+conn.commit()
+conn.close()
 
 
 @app.route("/api/booking-slots", methods=["GET"])
