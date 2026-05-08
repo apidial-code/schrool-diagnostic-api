@@ -1176,13 +1176,13 @@ def init_booking_table():
         )
     """)
 
-try:
-    cursor.execute("ALTER TABLE bookings ADD COLUMN reminder_sent INTEGER DEFAULT 0")
-except Exception:
-    pass
+    try:
+        cursor.execute("ALTER TABLE bookings ADD COLUMN reminder_sent INTEGER DEFAULT 0")
+    except Exception:
+        pass
 
-conn.commit()
-conn.close()
+    conn.commit()
+    conn.close()
 
 @app.route("/api/booking-slots", methods=["GET"])
 def get_booking_slots():
