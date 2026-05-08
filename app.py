@@ -1150,6 +1150,7 @@ def init_booking_table():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS bookings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1175,7 +1176,6 @@ def init_booking_table():
         )
     """)
 
-    
 try:
     cursor.execute("ALTER TABLE bookings ADD COLUMN reminder_sent INTEGER DEFAULT 0")
 except Exception:
@@ -1183,7 +1183,6 @@ except Exception:
 
 conn.commit()
 conn.close()
-
 
 @app.route("/api/booking-slots", methods=["GET"])
 def get_booking_slots():
