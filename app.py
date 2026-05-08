@@ -516,10 +516,71 @@ def get_combined_observation(p1, p2):
         return "The student demonstrates a solid grasp of the material across both levels. The next step is to confirm how this understanding holds as the level of challenge increases."
 
 def send_consultant_booking_email(booking):
-    lead_manager_email = os.environ.get("LEAD_MANAGER_EMAIL", "kineticscls@gmail.com")
+    lead_manager_email = os.environ.get("LEAD_MANAGER_EMAIL", "kineticcls@gmail.com")
     consultant_email = booking.get("consultant_email") or os.environ.get("CONSULTANT_EMAIL", "")
 
     recipient_email = consultant_email if consultant_email else lead_manager_email
+
+    qa = booking.get("qualifying_answers", {})
+
+    answer_maps = {
+    "1": {
+        "1": "Average performance",
+        "2": "Having problems coping",
+        "3": "Needs help",
+        "4": "Can't do homework",
+        "5": "Needs immediate help"
+    },
+    "2": {
+        "1": "My child to be coping with school work",
+        "2": "Someone to be working with my child one-on-one",
+        "3": "I want my child to do homework on their own",
+        "4": "To catch up with classwork"
+    },
+    "3": {
+        "1": "Don't know where to start",
+        "2": "Haven't found good tutoring options",
+        "3": "Too expensive",
+        "4": "No time",
+        "5": "Child is resistant to help"
+    },
+    "4": {
+        "1": "Tutoring center classes that didn't work",
+        "2": "One-on-one coaching that failed to deliver",
+        "3": "I have tried to teach my child myself",
+        "4": "I asked my eldest child who is good at math to help",
+        "5": "Haven't tried anything yet"
+    },
+    "5": {
+        "1": "Elementary (Grades 1-5)",
+        "2": "Middle School (Grades 6-8)",
+        "3": "High School (Grades 9-12)",
+        "4": "Other"
+    },
+    "6": {
+        "1": "1-2 hours",
+        "2": "3-5 hours",
+        "3": "6-10 hours",
+        "4": "As much as needed"
+    },
+    "7": {
+        "1": "Under $100",
+        "2": "$100-$300",
+        "3": "$300-$500",
+        "4": "$500+",
+        "5": "Whatever it takes"
+    },
+    "8": {
+        "1": "Just exploring options",
+        "2": "Within the next month",
+        "3": "Within the next week",
+        "4": "Need help immediately"
+    }
+}
+
+def qa_text(question, fallback="Not provided"):
+    value = str(qa.get(question, "")).strip()
+    return answer_maps.get(question, {}).get(value, value or fallback)
 
     parent_name = booking.get("parent_name", "Parent")
     parent_email = booking.get("parent_email", "")
@@ -548,6 +609,19 @@ def send_consultant_booking_email(booking):
         <p><strong>Student:</strong> {student_name}</p>
         <p><strong>School Year:</strong> {school_grade}</p>
         <p><strong>Curriculum:</strong> {curriculum}</p>
+
+        <p style="margin-top:20px;"><strong>Diagnostic Insights</strong></p>
+
+        <p><strong>Performance:</strong> {qa_text("1")}</p>
+        <p><strong>Goal (90 days):</strong> {qa_text("2")}</p>
+        <p><strong>Main Obstacle:</strong> {qa_text("3")}</p>
+        <p><strong>Previous Attempts:</strong> {qa_text("4")}</p>
+        <p><strong>School Level:</strong> {qa_text("5")}</p>
+        <p><strong>Weekly Time:</strong> {qa_text("6")}</p>
+        <p><strong>Budget:</strong> {qa_text("7")}</p>
+        <p><strong>Urgency:</strong> {qa_text("8")}</p>
+        <p><strong>Additional Notes:</strong> {qa.get("9", "Not provided")}</p>
+
 
         <hr>
 
@@ -633,7 +707,46 @@ def send_parent_booking_confirmation_email(booking):
         html_content
     )
 
+def send_parent_booking_reminder_email(booking):
+    parent_email = booking.get("parent_email", "")
+    parent_name = booking.get("parent_name", "Parent")
+    student_name = booking.get("student_name", "your child")
+    booking_date = booking.get("booking_date", "")
+    booking_time = booking.get("booking_time", "")
 
+    if not parent_email:
+        return {"success": False, "error": "Parent email missing"}
+
+    html_content = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 650px; margin: 0 auto; padding: 20px;">
+        <h2 style="color:#2563eb;">Reminder: Your Schrool Call is Tomorrow</h2>
+
+        <p>Dear {parent_name},</p>
+
+        <p>This is a reminder of your scheduled call to go through {student_name}'s diagnostic results.</p>
+
+        <div style="background:#f9fafb; border-left:4px solid #2563eb; padding:18px; border-radius:8px; margin:25px 0;">
+            <p><strong>Date:</strong> {booking_date}</p>
+            <p><strong>Time:</strong> {booking_time}</p>
+        </div>
+
+        <p>We look forward to speaking with you.</p>
+
+        <p>Best regards,<br>
+        <strong>Richard & The Schrool Team</strong></p>
+    </body>
+    </html>
+    """
+
+    subject = f"Reminder: Your Schrool Call Tomorrow - {student_name}"
+
+    return send_brevo_email(
+        parent_email,
+        parent_name,
+        subject,
+        html_content
+    )
 def send_combined_results_email(first_test, second_test):
     try:
         data = {
@@ -1057,9 +1170,16 @@ def init_booking_table():
             urgency TEXT,
             notes TEXT,
             consultant_email TEXT,
+            reminder_sent INTEGER DEFAULT 0,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    
+try:
+    cursor.execute("ALTER TABLE bookings ADD COLUMN reminder_sent INTEGER DEFAULT 0")
+except Exception:
+    pass
 
     conn.commit()
     conn.close()
