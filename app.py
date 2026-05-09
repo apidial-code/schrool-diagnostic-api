@@ -98,7 +98,8 @@ continuation_tokens = {}
 
 @contextmanager
 def get_db():
-    conn = sqlite3.connect(DATABASE_PATH)
+    conn = sqlite3.connect(DATABASE_PATH, timeout=30)
+    conn.execute("PRAGMA busy_timeout = 30000")
     conn.row_factory = sqlite3.Row
     try:
         yield conn
@@ -1156,7 +1157,8 @@ def internal_error(error):
 # ============================================================
 
 def init_booking_table():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.execute("PRAGMA busy_timeout = 30000")
     cursor = conn.cursor()
 
 
@@ -1198,7 +1200,8 @@ def get_booking_slots():
     try:
         init_booking_table()
 
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, timeout=30)
+        conn.execute("PRAGMA busy_timeout = 30000")
         cursor = conn.cursor()
 
         cursor.execute("""
@@ -1249,7 +1252,8 @@ def book_slot():
                 "error": "Missing booking date or time"
             }), 400
 
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, timeout=30)
+        conn.execute("PRAGMA busy_timeout = 30000")
         cursor = conn.cursor()
 
         # Prevent double booking
@@ -1307,6 +1311,9 @@ def book_slot():
             data.get("notes", ""),
             data.get("consultant_email", "")
         ))
+
+        conn.commit()
+        conn.close()
 
 
         # Send lead profile to manager or assigned consultant
