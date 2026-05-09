@@ -864,6 +864,15 @@ def send_combined_results_email(first_test, second_test):
         If you would like to understand how these results translate into your child’s current level, you can select a suitable time this week and we will go through them with you.
     </p>
 
+    <br><br>
+
+    <a href="https://test.schrool.net/schrool-fresher/booking.html"
+       style="display:inline-block;background:#2563eb;color:#ffffff;
+       padding:14px 22px;border-radius:8px;text-decoration:none;
+       font-weight:bold;margin-top:10px;">
+       Book a Free Diagnostic Review
+   </a>
+
 </div>
 
 <p style="font-size: 14px; color: #666;">
