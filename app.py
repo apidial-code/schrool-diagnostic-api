@@ -522,6 +522,9 @@ def send_consultant_booking_email(booking):
 
     recipient_email = lead_manager_email
 
+    print("📧 CONSULTANT/MANAGER EMAIL FUNCTION ENTERED")
+    print("📧 RECIPIENT:", recipient_email)
+
     qa = booking.get("qualifying_answers", {})
 
     answer_maps = {
@@ -1315,6 +1318,7 @@ def book_slot():
         conn.commit()
         conn.close()
 
+        print("📧 CALLING send_consultant_booking_email NOW")
         send_consultant_booking_email({
     "parent_name": data.get("parent_name"),
     "parent_email": data.get("parent_email"),
