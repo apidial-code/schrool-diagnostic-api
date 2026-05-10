@@ -1315,7 +1315,7 @@ def book_slot():
         conn.commit()
         conn.close()
 
-        send_manager_email({
+        send_consultant_booking_email({
     "parent_name": data.get("parent_name"),
     "parent_email": data.get("parent_email"),
     "student_name": data.get("student_name"),
