@@ -356,6 +356,8 @@ def send_brevo_email(to_email, to_name, subject, html_content):
         }
 
         response = requests.post(BREVO_API_URL, json=payload, headers=headers, timeout=20)
+        print("📧 BREVO STATUS:", response.status_code)
+        print("📧 BREVO RESPONSE:", response.text)
 
         if response.status_code in [200, 201]:
             return {"success": True, "message": "Email sent successfully", "email": to_email}
