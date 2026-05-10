@@ -525,6 +525,10 @@ def send_consultant_booking_email(booking):
     print("📧 CONSULTANT/MANAGER EMAIL FUNCTION ENTERED")
     print("📧 RECIPIENT:", recipient_email)
 
+
+    print("📧 CONSULTANT/MANAGER EMAIL FUNCTION ENTERED")
+    print("📧 RECIPIENT:", recipient_email)
+
     qa = booking.get("qualifying_answers", {})
 
     answer_maps = {
@@ -1319,23 +1323,24 @@ def book_slot():
         conn.close()
 
         print("📧 CALLING send_consultant_booking_email NOW")
+
         send_consultant_booking_email({
-    "parent_name": data.get("parent_name"),
-    "parent_email": data.get("parent_email"),
-    "student_name": data.get("student_name"),
-    "school_grade": data.get("school_grade"),
-    "test_curriculum": data.get("test_curriculum"),
-    "booking_date": booking_date,
-    "booking_time": booking_time,
-    "performance": data.get("performance"),
-    "goal": data.get("goal"),
-    "obstacle": data.get("obstacle"),
-    "attempts": data.get("attempts"),
-    "time_commitment": data.get("time_commitment"),
-    "budget": data.get("budget"),
-    "urgency": data.get("urgency"),
-    "notes": data.get("notes")
-})
+            "parent_name": data.get("parent_name"),
+            "parent_email": data.get("parent_email"),
+            "student_name": data.get("student_name"),
+            "school_grade": data.get("school_grade"),
+            "test_curriculum": data.get("test_curriculum"),
+            "booking_date": booking_date,
+            "booking_time": booking_time,
+            "performance": data.get("performance"),
+            "goal": data.get("goal"),
+            "obstacle": data.get("obstacle"),
+            "attempts": data.get("attempts"),
+            "time_commitment": data.get("time_commitment"),
+            "budget": data.get("budget"),
+            "urgency": data.get("urgency"),
+            "notes": data.get("notes")
+        })
 
 
         # Send lead profile to manager or assigned consultant
