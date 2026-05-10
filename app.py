@@ -520,7 +520,7 @@ def send_consultant_booking_email(booking):
     lead_manager_email = os.environ.get("LEAD_MANAGER_EMAIL", "kineticcls@gmail.com")
     consultant_email = booking.get("consultant_email") or os.environ.get("CONSULTANT_EMAIL", "")
 
-    recipient_email = consultant_email if consultant_email else lead_manager_email
+    recipient_email = lead_manager_email
 
     qa = booking.get("qualifying_answers", {})
 
@@ -1314,6 +1314,24 @@ def book_slot():
 
         conn.commit()
         conn.close()
+
+        send_manager_email({
+    "parent_name": data.get("parent_name"),
+    "parent_email": data.get("parent_email"),
+    "student_name": data.get("student_name"),
+    "school_grade": data.get("school_grade"),
+    "test_curriculum": data.get("test_curriculum"),
+    "booking_date": booking_date,
+    "booking_time": booking_time,
+    "performance": data.get("performance"),
+    "goal": data.get("goal"),
+    "obstacle": data.get("obstacle"),
+    "attempts": data.get("attempts"),
+    "time_commitment": data.get("time_commitment"),
+    "budget": data.get("budget"),
+    "urgency": data.get("urgency"),
+    "notes": data.get("notes")
+})
 
 
         # Send lead profile to manager or assigned consultant
