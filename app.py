@@ -527,10 +527,6 @@ def send_consultant_booking_email(booking):
     print("📧 CONSULTANT/MANAGER EMAIL FUNCTION ENTERED")
     print("📧 RECIPIENT:", recipient_email)
 
-
-    print("📧 CONSULTANT/MANAGER EMAIL FUNCTION ENTERED")
-    print("📧 RECIPIENT:", recipient_email)
-
     qa = booking.get("qualifying_answers", {})
 
     answer_maps = {
@@ -668,7 +664,7 @@ def qa_text(question, fallback="Not provided"):
     </html>
     """
 
-    subject = f"New Consultation Booking - {student_name}"
+    subject = f"🚨 NEW SCHROOL LEAD: {student_name} | Year {school_grade} | {booking_date} {booking_time}"
 
     return send_brevo_email(
         recipient_email,
