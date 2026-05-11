@@ -1264,8 +1264,8 @@ def book_slot():
         # Prevent double booking
         cursor.execute("""
             SELECT id FROM bookings
-            WHERE booking_date = ? AND booking_time = ?
-        """, (booking_date, booking_time))
+            WHERE parent_email = ?
+        """, (data.get("parent_email", ""),))
 
         existing = cursor.fetchone()
 
@@ -1273,7 +1273,7 @@ def book_slot():
             conn.close()
             return jsonify({
                 "success": False,
-                "error": "This slot has already been booked"
+                "error": "A booking already exists for this email address"
             }), 409
 
         cursor.execute("""
