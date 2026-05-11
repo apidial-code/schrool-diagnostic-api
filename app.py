@@ -665,6 +665,8 @@ def qa_text(question, fallback="Not provided"):
     """
 
     subject = f"🚨 NEW SCHROOL LEAD: {student_name} | Year {school_grade} | {booking_date} {booking_time}"
+    
+    print("MANAGER EMAIL DEBUG:", recipient_email, subject, flush=True)
 
     return send_brevo_email(
         recipient_email,
