@@ -519,7 +519,7 @@ def get_combined_observation(p1, p2):
         return "The student demonstrates a solid grasp of the material across both levels. The next step is to confirm how this understanding holds as the level of challenge increases."
 
 def send_consultant_booking_email(booking):
-    lead_manager_email = os.environ.get("LEAD_MANAGER_EMAIL", "apidial@gmail.com")
+    lead_manager_email = os.environ.get("LEAD_MANAGER_EMAIL", "kineticcls@gmail.com")
     consultant_email = booking.get("consultant_email") or os.environ.get("CONSULTANT_EMAIL", "")
 
     recipient_email = lead_manager_email
