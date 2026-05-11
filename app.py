@@ -599,72 +599,18 @@ def qa_text(question, fallback="Not provided"):
 
     html_content = f"""
     <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 700px; margin: 0 auto; padding: 20px;">
-
-        <h2 style="color:#1f2937;">New Consultation Booking</h2>
-
-        <p>A parent has requested a call after completing the Schrool diagnostic.</p>
-
-        <hr>
-
-        <h3>Customer Profile</h3>
-
-        <p><strong>Parent:</strong> {parent_name}</p>
-        <p><strong>Email:</strong> {parent_email}</p>
-        <p><strong>Phone:</strong> {phone}</p>
-        <p><strong>Student:</strong> {student_name}</p>
-        <p><strong>School Year:</strong> {school_grade}</p>
-        <p><strong>Curriculum:</strong> {curriculum}</p>
-
-        <p style="margin-top:20px;"><strong>Diagnostic Insights</strong></p>
-
-        <p><strong>Performance:</strong> {qa_text("1")}</p>
-        <p><strong>Goal (90 days):</strong> {qa_text("2")}</p>
-        <p><strong>Main Obstacle:</strong> {qa_text("3")}</p>
-        <p><strong>Previous Attempts:</strong> {qa_text("4")}</p>
-        <p><strong>School Level:</strong> {qa_text("5")}</p>
-        <p><strong>Weekly Time:</strong> {qa_text("6")}</p>
-        <p><strong>Budget:</strong> {qa_text("7")}</p>
-        <p><strong>Urgency:</strong> {qa_text("8")}</p>
-        <p><strong>Additional Notes:</strong> {qa.get("9", "Not provided")}</p>
-
-
-        <hr>
-
-        <h3>Parent’s Situation</h3>
-
-        <p><strong>Current performance:</strong> {booking.get("performance", "Not provided")}</p>
-        <p><strong>Goal for next 90 days:</strong> {booking.get("goal", "Not provided")}</p>
-        <p><strong>Main obstacle:</strong> {booking.get("obstacle", "Not provided")}</p>
-        <p><strong>What they have tried:</strong> {booking.get("attempts", "Not provided")}</p>
-        <p><strong>Time available weekly:</strong> {booking.get("time_commitment", "Not provided")}</p>
-        <p><strong>Monthly budget:</strong> {booking.get("budget", "Not provided")}</p>
-        <p><strong>Urgency:</strong> {booking.get("urgency", "Not provided")}</p>
-
-        <hr>
-
-        <h3>Additional Notes</h3>
-        <p>{booking.get("notes", "No additional notes provided.")}</p>
-
-        <hr>
-
-        <h3>Booked Call</h3>
-        <p><strong>Date:</strong> {booking_date}</p>
-        <p><strong>Time:</strong> {booking_time}</p>
-
-        <hr>
-
-        <h3>Consultant Guidance</h3>
-        <p>
-            Focus first on the parent’s stated concern, then connect it gently to the diagnostic results.
-            Avoid starting with a programme pitch. Begin by clarifying the child’s current level and the pattern shown in the results.
-        </p>
-
+    <body>
+    <h2>NEW SCHROOL LEAD TEST</h2>
+    <p>Parent: {booking.get("parent_name", "")}</p>
+    <p>Email: {booking.get("parent_email", "")}</p>
+    <p>Student: {booking.get("student_name", "")}</p>
+    <p>Date: {booking.get("booking_date", "")}</p>
+    <p>Time: {booking.get("booking_time", "")}</p>
     </body>
     </html>
     """
 
-    subject = f"🚨 NEW SCHROOL LEAD: {student_name} | Year {school_grade} | {booking_date} {booking_time}"
+    subject = "NEW SCHROOL LEAD TEST"
     print("MANAGER EMAIL DEBUG:", recipient_email, subject, flush=True)
 
     return send_brevo_email(
