@@ -9,6 +9,8 @@ Features:
 - /api/continue endpoint for restoring student/session identity
 - First test email, combined results email, and follow-up email
 """
+import psycopg2
+from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 import os
@@ -86,7 +88,7 @@ SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "diagnostics@schrool.com")
 SENDER_NAME = os.environ.get("SENDER_NAME", "Schrool Diagnostics")
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://test.schrool.net").rstrip("/")
-
+DATABASE_URL = os.environ.get("DATABASE_URL")
 DATABASE_PATH = os.environ.get("DATABASE_PATH", "/tmp/test_results.db")
 
 # In-memory token store for continuation links
@@ -98,17 +100,29 @@ continuation_tokens = {}
 
 @contextmanager
 def get_db():
-    conn = sqlite3.connect(DATABASE_PATH, timeout=30)
-    conn.execute("PRAGMA busy_timeout = 30000")
-    conn.row_factory = sqlite3.Row
+    if DATABASE_URL:
+        parsed = urlparse(DATABASE_URL)
+        conn = psycopg2.connect(
+            dbname=parsed.path[1:],
+            user=parsed.username,
+            password=parsed.password,
+            host=parsed.hostname,
+            port=parsed.port
+        )
     try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+            yield conn
+            conn.commit()
+        finally:
+            conn.close()
+    else:
+        conn = sqlite3.connect(DATABASE_PATH, timeout=30)
+        conn.execute("PRAGMA busy_timeout = 30000")
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+            conn.commit()
+        finally:
+            conn.close()
 
 
 def init_database():
