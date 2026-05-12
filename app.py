@@ -1110,15 +1110,21 @@ def internal_error(error):
 # BOOKING SYSTEM
 # ============================================================
 
-def init_booking_table():
-    conn = sqlite3.connect(DB_PATH, timeout=30)
-    conn.execute("PRAGMA busy_timeout = 30000")
-    cursor = conn.cursor()
+def get_booking_db():
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        raise Exception("DATABASE_URL is not set. Booking system requires Heroku Postgres.")
 
+    return psycopg2.connect(database_url)
+
+
+def init_booking_table():
+    conn = get_booking_db()
+    cursor = conn.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS bookings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             parent_name TEXT,
             parent_email TEXT,
             phone TEXT,
@@ -1137,16 +1143,12 @@ def init_booking_table():
             notes TEXT,
             consultant_email TEXT,
             reminder_sent INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
-    try:
-        cursor.execute("ALTER TABLE bookings ADD COLUMN reminder_sent INTEGER DEFAULT 0")
-    except Exception:
-        pass
-
     conn.commit()
+    cursor.close()
     conn.close()
 
 @app.route("/api/booking-slots", methods=["GET"])
