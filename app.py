@@ -1156,8 +1156,7 @@ def get_booking_slots():
     try:
         init_booking_table()
 
-        conn = sqlite3.connect(DB_PATH, timeout=30)
-        conn.execute("PRAGMA busy_timeout = 30000")
+        conn = get_booking_db()
         cursor = conn.cursor()
 
         cursor.execute("""
@@ -1166,6 +1165,8 @@ def get_booking_slots():
         """)
 
         rows = cursor.fetchall()
+
+        cursor.close()
         conn.close()
 
         booked_slots = [
@@ -1201,6 +1202,7 @@ def book_slot():
 
         booking_date = data.get("booking_date")
         booking_time = data.get("booking_time")
+        parent_email = data.get("parent_email", "").strip().lower()
 
         if not booking_date or not booking_time:
             return jsonify({
@@ -1208,23 +1210,45 @@ def book_slot():
                 "error": "Missing booking date or time"
             }), 400
 
-        conn = sqlite3.connect(DB_PATH, timeout=30)
-        conn.execute("PRAGMA busy_timeout = 30000")
+        if not parent_email:
+            return jsonify({
+                "success": False,
+                "error": "Missing parent email"
+            }), 400
+
+        conn = get_booking_db()
         cursor = conn.cursor()
 
-        # Prevent double booking
+        # Prevent repeat booking by same email
         cursor.execute("""
             SELECT id FROM bookings
-            WHERE parent_email = ?
-        """, (data.get("parent_email", ""),))
+            WHERE LOWER(parent_email) = %s
+        """, (parent_email,))
 
-        existing = cursor.fetchone()
+        existing_email = cursor.fetchone()
 
-        if existing:
+        if existing_email:
+            cursor.close()
             conn.close()
             return jsonify({
                 "success": False,
                 "error": "A booking already exists for this email address"
+            }), 409
+
+        # Prevent double booking of same slot
+        cursor.execute("""
+            SELECT id FROM bookings
+            WHERE booking_date = %s AND booking_time = %s
+        """, (booking_date, booking_time))
+
+        existing_slot = cursor.fetchone()
+
+        if existing_slot:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                "success": False,
+                "error": "This time slot has already been booked"
             }), 409
 
         cursor.execute("""
@@ -1247,10 +1271,10 @@ def book_slot():
                 notes,
                 consultant_email
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             data.get("parent_name", ""),
-            data.get("parent_email", ""),
+            parent_email,
             data.get("phone", ""),
             data.get("student_name", ""),
             data.get("school_grade", ""),
@@ -1269,33 +1293,11 @@ def book_slot():
         ))
 
         conn.commit()
+
+        cursor.close()
         conn.close()
 
-        print("📧 CALLING send_consultant_booking_email NOW")
-
-        send_consultant_booking_email({
-            "parent_name": data.get("parent_name"),
-            "parent_email": data.get("parent_email"),
-            "student_name": data.get("student_name"),
-            "school_grade": data.get("school_grade"),
-            "test_curriculum": data.get("test_curriculum"),
-            "booking_date": booking_date,
-            "booking_time": booking_time,
-            "performance": data.get("performance"),
-            "goal": data.get("goal"),
-            "obstacle": data.get("obstacle"),
-            "attempts": data.get("attempts"),
-            "time_commitment": data.get("time_commitment"),
-            "budget": data.get("budget"),
-            "urgency": data.get("urgency"),
-            "notes": data.get("notes")
-        })
-
-
-        # Send lead profile to manager or assigned consultant
         send_consultant_booking_email(data)
-
-        # Send confirmation to parent
         send_parent_booking_confirmation_email(data)
 
         return jsonify({
