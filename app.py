@@ -100,29 +100,17 @@ continuation_tokens = {}
 
 @contextmanager
 def get_db():
-    if DATABASE_URL:
-        parsed = urlparse(DATABASE_URL)
-        conn = psycopg2.connect(
-            dbname=parsed.path[1:],
-            user=parsed.username,
-            password=parsed.password,
-            host=parsed.hostname,
-            port=parsed.port
-        )
-        try:
-            yield conn
-            conn.commit()
-        finally:
-            conn.close()
-    else:
-        conn = sqlite3.connect(DATABASE_PATH, timeout=30)
-        conn.execute("PRAGMA busy_timeout = 30000")
-        conn.row_factory = sqlite3.Row
-        try:
-            yield conn
-            conn.commit()
-        finally:
-            conn.close()
+    conn = sqlite3.connect(DATABASE_PATH, timeout=30)
+    conn.execute("PRAGMA busy_timeout = 30000")
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def init_database():
