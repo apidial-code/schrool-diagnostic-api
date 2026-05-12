@@ -109,7 +109,7 @@ def get_db():
             host=parsed.hostname,
             port=parsed.port
         )
-    try:
+        try:
             yield conn
             conn.commit()
         finally:
