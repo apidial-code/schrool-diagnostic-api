@@ -526,9 +526,12 @@ def send_consultant_booking_email(booking):
     recipient_email = lead_manager_email
 
     print("📧 CONSULTANT/MANAGER EMAIL FUNCTION ENTERED", flush=True)
+    
     print("📧 RECIPIENT:", recipient_email, flush=True)
 
     qa = booking.get("qualifying_answers", {})
+
+    print("📧 QUALIFYING ANSWERS RAW:", qa, flush=True)
 
     answer_maps = {
         "1": {
@@ -644,7 +647,7 @@ def send_consultant_booking_email(booking):
         subject,
         html_content
     )
-    
+
 def send_parent_booking_confirmation_email(booking):
     parent_email = booking.get("parent_email", "")
     parent_name = booking.get("parent_name", "Parent")
