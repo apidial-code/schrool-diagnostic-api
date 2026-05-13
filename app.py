@@ -522,73 +522,72 @@ def get_combined_observation(p1, p2):
 
 def send_consultant_booking_email(booking):
     lead_manager_email = os.environ.get("LEAD_MANAGER_EMAIL", "kineticcls@gmail.com")
-    consultant_email = booking.get("consultant_email") or os.environ.get("CONSULTANT_EMAIL", "")
 
     recipient_email = lead_manager_email
 
-    print("📧 CONSULTANT/MANAGER EMAIL FUNCTION ENTERED")
-    print("📧 RECIPIENT:", recipient_email)
+    print("📧 CONSULTANT/MANAGER EMAIL FUNCTION ENTERED", flush=True)
+    print("📧 RECIPIENT:", recipient_email, flush=True)
 
     qa = booking.get("qualifying_answers", {})
 
     answer_maps = {
-    "1": {
-        "1": "Average performance",
-        "2": "Having problems coping",
-        "3": "Needs help",
-        "4": "Can't do homework",
-        "5": "Needs immediate help"
-    },
-    "2": {
-        "1": "My child to be coping with school work",
-        "2": "Someone to be working with my child one-on-one",
-        "3": "I want my child to do homework on their own",
-        "4": "To catch up with classwork"
-    },
-    "3": {
-        "1": "Don't know where to start",
-        "2": "Haven't found good tutoring options",
-        "3": "Too expensive",
-        "4": "No time",
-        "5": "Child is resistant to help"
-    },
-    "4": {
-        "1": "Tutoring center classes that didn't work",
-        "2": "One-on-one coaching that failed to deliver",
-        "3": "I have tried to teach my child myself",
-        "4": "I asked my eldest child who is good at math to help",
-        "5": "Haven't tried anything yet"
-    },
-    "5": {
-        "1": "Elementary (Grades 1-5)",
-        "2": "Middle School (Grades 6-8)",
-        "3": "High School (Grades 9-12)",
-        "4": "Other"
-    },
-    "6": {
-        "1": "1-2 hours",
-        "2": "3-5 hours",
-        "3": "6-10 hours",
-        "4": "As much as needed"
-    },
-    "7": {
-        "1": "Under $100",
-        "2": "$100-$300",
-        "3": "$300-$500",
-        "4": "$500+",
-        "5": "Whatever it takes"
-    },
-    "8": {
-        "1": "Just exploring options",
-        "2": "Within the next month",
-        "3": "Within the next week",
-        "4": "Need help immediately"
+        "1": {
+            "1": "Average performance",
+            "2": "Having problems coping",
+            "3": "Needs help",
+            "4": "Can't do homework",
+            "5": "Needs immediate help"
+        },
+        "2": {
+            "1": "My child to be coping with school work",
+            "2": "Someone to be working with my child one-on-one",
+            "3": "I want my child to do homework on their own",
+            "4": "To catch up with classwork"
+        },
+        "3": {
+            "1": "Don't know where to start",
+            "2": "Haven't found good tutoring options",
+            "3": "Too expensive",
+            "4": "No time",
+            "5": "Child is resistant to help"
+        },
+        "4": {
+            "1": "Tutoring center classes that didn't work",
+            "2": "One-on-one coaching that failed to deliver",
+            "3": "I have tried to teach my child myself",
+            "4": "I asked my eldest child who is good at math to help",
+            "5": "Haven't tried anything yet"
+        },
+        "5": {
+            "1": "Elementary (Grades 1-5)",
+            "2": "Middle School (Grades 6-8)",
+            "3": "High School (Grades 9-12)",
+            "4": "Other"
+        },
+        "6": {
+            "1": "1-2 hours",
+            "2": "3-5 hours",
+            "3": "6-10 hours",
+            "4": "As much as needed"
+        },
+        "7": {
+            "1": "Under $100",
+            "2": "$100-$300",
+            "3": "$300-$500",
+            "4": "$500+",
+            "5": "Whatever it takes"
+        },
+        "8": {
+            "1": "Just exploring options",
+            "2": "Within the next month",
+            "3": "Within the next week",
+            "4": "Need help immediately"
+        }
     }
-}
 
-def qa_text(question, fallback="Not provided"):
-    value = str(qa.get(question, "")).strip()
-    return answer_maps.get(question, {}).get(value, value or fallback)
+    def qa_text(question, fallback="Not provided"):
+        value = str(qa.get(question, "")).strip()
+        return answer_maps.get(question, {}).get(value, value or fallback)
 
     parent_name = booking.get("parent_name", "Parent")
     parent_email = booking.get("parent_email", "")
@@ -601,26 +600,51 @@ def qa_text(question, fallback="Not provided"):
 
     html_content = f"""
     <html>
-    <body>
-    <h2>NEW SCHROOL LEAD TEST</h2>
-    <p>Parent: {booking.get("parent_name", "")}</p>
-    <p>Email: {booking.get("parent_email", "")}</p>
-    <p>Student: {booking.get("student_name", "")}</p>
-    <p>Date: {booking.get("booking_date", "")}</p>
-    <p>Time: {booking.get("booking_time", "")}</p>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <h2>NEW SCHROOL LEAD</h2>
+
+        <h3>Customer Profile</h3>
+        <p><strong>Parent Name:</strong> {parent_name}</p>
+        <p><strong>Parent Email:</strong> {parent_email}</p>
+        <p><strong>Phone:</strong> {phone}</p>
+        <p><strong>Student Name:</strong> {student_name}</p>
+        <p><strong>School Grade:</strong> {school_grade}</p>
+        <p><strong>Curriculum:</strong> {curriculum}</p>
+
+        <h3>Booking Details</h3>
+        <p><strong>Date:</strong> {booking_date}</p>
+        <p><strong>Time:</strong> {booking_time}</p>
+
+        <h3>Diagnostic Insights</h3>
+        <p><strong>Parent Situation:</strong> {qa_text("1")}</p>
+        <p><strong>Main Goal:</strong> {qa_text("2")}</p>
+        <p><strong>Obstacle:</strong> {qa_text("3")}</p>
+        <p><strong>Previous Attempts:</strong> {qa_text("4")}</p>
+        <p><strong>Child Level:</strong> {qa_text("5")}</p>
+        <p><strong>Time Commitment:</strong> {qa_text("6")}</p>
+        <p><strong>Budget:</strong> {qa_text("7")}</p>
+        <p><strong>Urgency:</strong> {qa_text("8")}</p>
+
+        <h3>Additional Notes</h3>
+        <p>{booking.get("notes", "None provided")}</p>
+
+        <h3>Consultant Guidance</h3>
+        <p>Review diagnostic results before call. Prioritize understanding learning gaps, urgency, and parent readiness.</p>
     </body>
     </html>
     """
 
-    subject = "NEW SCHROOL LEAD TEST"
+    subject = f"NEW SCHROOL LEAD: {student_name}"
+
     print("MANAGER EMAIL DEBUG:", recipient_email, subject, flush=True)
 
     return send_brevo_email(
         recipient_email,
-        "Schrool System",
+        "Schrool Diagnostics",
         subject,
         html_content
     )
+    
 def send_parent_booking_confirmation_email(booking):
     parent_email = booking.get("parent_email", "")
     parent_name = booking.get("parent_name", "Parent")
