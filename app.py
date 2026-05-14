@@ -1324,8 +1324,29 @@ def book_slot():
         cursor.close()
         conn.close()
 
-        send_consultant_booking_email(data)
-        send_parent_booking_confirmation_email(data)
+                qa = data.get("qualifying_answers") or data.get("qualifyingAnswers") or {}
+
+                answer_maps = {
+            "1": {"1": "Average performance", "2": "Having problems coping", "3": "Needs help", "4": "Can't do homework", "5": "Needs immediate help"},
+            "2": {"1": "My child to be coping with school work", "2": "Someone to be working with my child one-on-one", "3": "I want my child to do homework on their own", "4": "To catch up with classwork"},
+            "3": {"1": "Don't know where to start", "2": "Haven't found good tutoring options", "3": "Too expensive", "4": "No time", "5": "Child is resistant to help"},
+            "4": {"1": "Tutoring center classes that didn't work", "2": "One-on-one coaching that failed to deliver", "3": "I have tried to teach my child myself", "4": "I asked my eldest child who is good at math to help", "5": "Haven't tried anything yet"},
+            "6": {"1": "Less than 1 hour", "2": "1-2 hours", "3": "3-5 hours", "4": "As much as needed"},
+            "7": {"1": "Under $100", "2": "$100-$300", "3": "$300-$500", "4": "$500+", "5": "Whatever it takes"},
+            "8": {"1": "Just exploring options", "2": "Within the next month", "3": "Within the next week", "4": "Need help immediately"}
+                }
+
+                data["performance"] = data.get("performance") or answer_maps.get("1", {}).get(str(qa.get("1")), "")
+                data["goal"] = data.get("goal") or answer_maps.get("2", {}).get(str(qa.get("2")), "")
+                data["obstacle"] = data.get("obstacle") or answer_maps.get("3", {}).get(str(qa.get("3")), "")
+                data["attempts"] = data.get("attempts") or answer_maps.get("4", {}).get(str(qa.get("4")), "")
+                data["time_commitment"] = data.get("time_commitment") or answer_maps.get("6", {}).get(str(qa.get("6")), "")
+                data["budget"] = data.get("budget") or answer_maps.get("7", {}).get(str(qa.get("7")), "")
+                data["urgency"] = data.get("urgency") or answer_maps.get("8", {}).get(str(qa.get("8")), "")
+                data["notes"] = data.get("notes") or str(qa.get("9", ""))
+
+                send_consultant_booking_email(data)
+                send_parent_booking_confirmation_email(data)
 
         return jsonify({
             "success": True,
