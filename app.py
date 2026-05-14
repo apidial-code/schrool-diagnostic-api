@@ -1324,19 +1324,19 @@ def book_slot():
         cursor.close()
         conn.close()
 
-            qa = data.get("qualifying_answers") or data.get("qualifyingAnswers") or {}
+        qa = data.get("qualifying_answers") or data.get("qualifyingAnswers") or {}
 
-            data["performance"] = data.get("performance") or str(qa.get("1", ""))
-            data["goal"] = data.get("goal") or str(qa.get("2", ""))
-            data["obstacle"] = data.get("obstacle") or str(qa.get("3", ""))
-            data["attempts"] = data.get("attempts") or str(qa.get("4", ""))
-            data["time_commitment"] = data.get("time_commitment") or str(qa.get("6", ""))
-            data["budget"] = data.get("budget") or str(qa.get("7", ""))
-            data["urgency"] = data.get("urgency") or str(qa.get("8", ""))
-            data["notes"] = data.get("notes") or str(qa.get("9", ""))
+        data["performance"] = data.get("performance") or str(qa.get("1", ""))
+        data["goal"] = data.get("goal") or str(qa.get("2", ""))
+        data["obstacle"] = data.get("obstacle") or str(qa.get("3", ""))
+        data["attempts"] = data.get("attempts") or str(qa.get("4", ""))
+        data["time_commitment"] = data.get("time_commitment") or str(qa.get("6", ""))
+        data["budget"] = data.get("budget") or str(qa.get("7", ""))
+        data["urgency"] = data.get("urgency") or str(qa.get("8", ""))
+        data["notes"] = data.get("notes") or str(qa.get("9", ""))
 
-            send_consultant_booking_email(data)
-            send_parent_booking_confirmation_email(data)
+        send_consultant_booking_email(data)
+        send_parent_booking_confirmation_email(data)
 
         return jsonify({
             "success": True,
