@@ -529,7 +529,7 @@ def send_consultant_booking_email(booking):
     
     print("📧 RECIPIENT:", recipient_email, flush=True)
 
-    qa = booking.get("qualifying_answers", {})
+    qa = booking.get("qualifying_answers") or booking.get("qualifyingAnswers") or {}
 
     print("📧 QUALIFYING ANSWERS RAW:", qa, flush=True)
 
