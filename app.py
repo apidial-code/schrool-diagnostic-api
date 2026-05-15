@@ -619,15 +619,15 @@ def send_consultant_booking_email(booking):
         <p><strong>Time:</strong> {booking_time}</p>
 
         <h3>Diagnostic Insights</h3>
-        <p><strong>1. Which best describes your child's current math performance?::</strong> {qa_text("1")}</p>
-        <p><strong>2. What do you want to achieve in the next 90 days?</strong> {qa_text("2")}</p>
-        <p><strong>3. What is the main obstacle preventing you from achieving that?</strong> {qa_text("3")}</p>
-        <p><strong>4. What have you tried before?</strong> {qa_text("4")}</p>
-        <p><strong>5. What grade/year is your child currently in?</strong> {qa_text("5")}</p>
-        <p><strong>6. How much time can your child dedicate to math improvement weekly?</strong> {qa_text("6")}</p>
-        <p><strong>7. What's your monthly budget for math tutoring?</strong> {qa_text("7")}</p>
-        <p><strong>8. How urgently do you need help?</strong> {qa_text("8")}</p>
-        <p><strong>9. Additional parent notes:</strong> {booking.get("notes", "None provided")}</p>
+        <p><strong>Current Performance:</strong> {qa_text("1")}</p>
+        <p><strong>90-Day Goal:</strong> {qa_text("2")}</p>
+        <p><strong>Main Obstacle:</strong> {qa_text("3")}</p>
+        <p><strong>Previous Attempts:</strong> {qa_text("4")}</p>
+        <p><strong>Child Level:</strong> {qa_text("5")}</p>
+        <p><strong>Weekly Commitment:</strong> {qa_text("6")}</p>
+        <p><strong>Budget:</strong> {qa_text("7")}</p>
+        <p><strong>Urgency:</strong> {qa_text("8")}</p>
+        <p><strong>Additional Notes:</strong> {booking.get("notes", "None provided")}</p>
 
         <h3>Consultant Guidance</h3>
         <p>Review diagnostic results before call. Prioritize understanding learning gaps, urgency, and parent readiness.</p>
