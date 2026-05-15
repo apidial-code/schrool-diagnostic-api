@@ -1224,6 +1224,7 @@ def book_slot():
         init_booking_table()
 
         data = request.get_json() or {}
+        print("BOOK SLOT FULL DATA:", data, flush=True)
 
         booking_date = data.get("booking_date")
         booking_time = data.get("booking_time")
