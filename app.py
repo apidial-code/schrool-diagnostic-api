@@ -533,6 +533,8 @@ def send_consultant_booking_email(booking):
 
     print("📧 QUALIFYING ANSWERS RAW:", qa, flush=True)
 
+   
+
     answer_maps = {
         "1": {
             "1": "Average performance",
@@ -587,11 +589,21 @@ def send_consultant_booking_email(booking):
             "4": "Need help immediately"
         }
     }
-
     def qa_text(question, fallback="Not provided"):
-        value = str(qa.get(question, "")).strip()
-        return answer_maps.get(question, {}).get(value, value or fallback)
+        qa_source = qa or {
+            "1": booking.get("performance", ""),
+            "2": booking.get("goal", ""),
+            "3": booking.get("obstacle", ""),
+            "4": booking.get("attempts", ""),
+            "5": booking.get("child_level", ""),
+            "6": booking.get("time_commitment", ""),
+            "7": booking.get("budget", ""),
+            "8": booking.get("urgency", "")
+    }
 
+    value = str(qa_source.get(question, "")).strip()
+        return answer_maps.get(question, {}).get(value, value or fallback)
+        
     parent_name = booking.get("parent_name", "Parent")
     parent_email = booking.get("parent_email", "")
     phone = booking.get("phone", "")
