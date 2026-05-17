@@ -590,7 +590,7 @@ def send_consultant_booking_email(booking):
         }
     }
     def qa_text(question, fallback="Not provided"):
-    qa_source = qa or {
+        qa_source = qa or {
             "1": booking.get("performance", ""),
             "2": booking.get("goal", ""),
             "3": booking.get("obstacle", ""),
