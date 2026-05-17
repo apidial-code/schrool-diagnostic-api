@@ -1108,6 +1108,10 @@ def submit_test():
         
         print("FIRST TEST DATA:", first_test)
         print("SECOND TEST DATA:", second_test)
+        second_test["consultantProfile"] = data.get("consultantProfile") or data.get("consultant_profile") or {}
+        second_test["qualifying_answers"] = data.get("qualifying_answers") or data.get("qualifyingAnswers") or {}
+        print("CONSULTANT PROFILE:", second_test["consultantProfile"], flush=True)
+        print("QUALIFYING ANSWERS:", second_test["qualifying_answers"], flush=True)
         result = send_combined_results_email(first_test, second_test)
         
         if result.get("success"):
