@@ -531,6 +531,18 @@ def send_consultant_booking_email(booking):
 
     qa = booking.get("qualifying_answers") or booking.get("qualifyingAnswers") or {}
 
+    cp = booking.get("consultantProfile") or booking.get("consultant_profile") or {}
+
+    performance = cp.get("performance") or qa.get("1", "")
+    goal = cp.get("goal") or qa.get("2", "")
+    obstacle = cp.get("obstacle") or qa.get("3", "")
+    attempts = cp.get("attempts") or qa.get("4", "")
+    child_level = cp.get("child_level") or qa.get("5", "")
+    time_commitment = cp.get("time_commitment") or qa.get("6", "")
+    budget = cp.get("budget") or qa.get("7", "")
+    urgency = cp.get("urgency") or qa.get("8", "")
+    notes = cp.get("notes") or qa.get("9", "")
+
     print("📧 QUALIFYING ANSWERS RAW:", qa, flush=True)
 
    
