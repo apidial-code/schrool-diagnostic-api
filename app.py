@@ -9,8 +9,6 @@ Features:
 - /api/continue endpoint for restoring student/session identity
 - First test email, combined results email, and follow-up email
 """
-import psycopg2
-from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 import os
@@ -59,8 +57,6 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 
-DB_PATH = "/tmp/test_results.db"
-
 CORS(app, resources={
     r"/api/*": {
         "origins": [
@@ -88,7 +84,7 @@ SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "diagnostics@schrool.com")
 SENDER_NAME = os.environ.get("SENDER_NAME", "Schrool Diagnostics")
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://test.schrool.net").rstrip("/")
-DATABASE_URL = os.environ.get("DATABASE_URL")
+
 DATABASE_PATH = os.environ.get("DATABASE_PATH", "/tmp/test_results.db")
 
 # In-memory token store for continuation links
@@ -100,8 +96,7 @@ continuation_tokens = {}
 
 @contextmanager
 def get_db():
-    conn = sqlite3.connect(DATABASE_PATH, timeout=30)
-    conn.execute("PRAGMA busy_timeout = 30000")
+    conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     try:
         yield conn
@@ -358,8 +353,6 @@ def send_brevo_email(to_email, to_name, subject, html_content):
         }
 
         response = requests.post(BREVO_API_URL, json=payload, headers=headers, timeout=20)
-        print("📧 BREVO STATUS:", response.status_code)
-        print("📧 BREVO RESPONSE:", response.text)
 
         if response.status_code in [200, 201]:
             return {"success": True, "message": "Email sent successfully", "email": to_email}
@@ -378,11 +371,6 @@ def send_brevo_email(to_email, to_name, subject, html_content):
 
 def send_first_test_email(data):
     try:
-        color = "#e74c3c"
-        completed_test_label = f"Year {data.get('test_grade', '')}"
-        next_test_label = "Next Test"
-        interpretation = "Your child needs significant support. Consider working with a tutor to build foundational skills."
-        next_test_section = ""
         student_full_name = data["student_name"]
         student_first_name = student_full_name.split()[0] if student_full_name else "Student"
 
@@ -398,28 +386,24 @@ def send_first_test_email(data):
             "student_name": data["student_name"],
             "test_curriculum": data["test_curriculum"],
             "first_test_year": int(data["test_grade"]),
-            "expected_second_year": int(data.get("next_test_grade") or 0),
+            "expected_second_year": int(data["next_test_grade"]),
             "expires_at": (datetime.now() + timedelta(hours=48)).isoformat(),
         }
 
         curriculum_slug = data["test_curriculum"].strip().lower()
-        next_test_grade = int(data.get("next_test_grade") or 0)
-        single_test_final = bool(data.get("single_test_final", False))
-        next_test_file = data.get("next_test_file")
-        if not next_test_file and next_test_grade:
-            next_test_file = f"{curriculum_slug}-year{next_test_grade}-math-test.html"
-            
-        print("NEXT TEST FILE RECEIVED:", next_test_file)
-        print("NEXT TEST GRADE RECEIVED:", next_test_grade)
+        next_test_grade = int(data["next_test_grade"])
 
-        if False:
-            second_test_link = None
-        elif next_test_file:
+        next_test_file = data.get("next_test_file")
+        
+        print("NEXT TEST FILE RECEIVED:", data.get("next_test_file"))
+        print("NEXT TEST GRADE RECEIVED:", data.get("next_test_grade"))
+        
+        if next_test_file:
             second_test_link = (
                 f"{FRONTEND_URL}/schrool-fresher/"
                 f"{next_test_file}"
                 f"?token={token}"
-            )
+        )
         else:
             if curriculum_slug == "singapore":
                 if next_test_grade <= 6:
@@ -433,39 +417,20 @@ def send_first_test_email(data):
                 f"{FRONTEND_URL}/schrool-fresher/"
                 f"{fallback_file}"
                 f"?token={token}"
-            )
+        )
+            
 
         interpretation = get_interpretation(int(data["percentage"]))
         performance = get_performance_level(int(data["percentage"]))
-        color = performance.get("color", "#e74c3c") if isinstance(performance, dict) else "#e74c3c"
-
-        completed_test_label = f"Year {data['test_grade']}"
-        if curriculum_slug == "singapore":
-            completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
-
-        next_test_label = f"Year {next_test_grade}" if next_test_grade else "Next Test"
-
-        if curriculum_slug == "singapore":
-            next_test_label = singapore_file_label(
-                data.get("next_test_file"),
-                data["test_curriculum"],
-                next_test_grade
-            )
-        next_test_section = f"""
-        <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
-            <h3 style="color: #92400e; margin-top: 0; font-size: 18px;">Next Test to Complete</h3>
-            <p><strong>{data['test_curriculum']} {next_test_label}</strong></p>
-            <p>Please complete this second test within 48 hours so we can provide a full diagnosis of your child's math situation.</p>
-            <p><strong>Link expires:</strong> {deadline_str}</p>
-        </div>
-
-        <div style="text-align: center; margin: 30px 0;">
-            <a href="{second_test_link}"
-               style="display: inline-block; background-color: #2563eb; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
-                Take {data['test_curriculum']} {next_test_label} Test Now
-            </a>
-        </div>
-        """
+        color = performance["color"]
+        
+        completed_test_label = singapore_level_label(data["test_curriculum"], data["test_grade"])
+        next_test_label = singapore_file_label(
+            data.get("next_test_file"),
+            data["test_curriculum"],
+            next_test_grade
+        )
+        
         html_content = f"""
         
         <!DOCTYPE html>
@@ -489,7 +454,19 @@ def send_first_test_email(data):
                     <p><strong>Performance Assessment:</strong> {interpretation}</p>
                 </div>
 
-                {next_test_section if next_test_section else ""}
+                <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
+                    <h3 style="color: #92400e; margin-top: 0; font-size: 18px;">Next Test to Complete</h3>
+                    <p><strong>{data['test_curriculum']} {next_test_label}</strong></p>
+                    <p>Please complete this second test within 48 hours so we can provide a full diagnosis of your child's math situation.</p>
+                    <p><strong>Link expires:</strong> {deadline_str}</p>
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{second_test_link}"
+                       style="display: inline-block; background-color: #2563eb; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
+                        Take {data['test_curriculum']} {next_test_label} Test Now
+                    </a>
+                </div>
 
                 <p style="font-size: 14px; color: #666;">
                     Best regards,<br>
@@ -500,244 +477,15 @@ def send_first_test_email(data):
         </html>
         """
 
-        subject = f"⏰ {data['test_curriculum']} Test 1 Complete - Next Test Ready"
-        return send_brevo_email(
-            data["parent_email"],
-            data.get("parent_name", "Parent"),
-            subject,
-            html_content
-        )
+        subject = f"⏰ {student_first_name}'s Results: Complete {data['test_curriculum']} {next_test_label} Within 48 Hours" 
+        to_name = data.get("parent_name", "Parent")
+
+        return send_brevo_email(data["parent_email"], to_name, subject, html_content)
+
     except Exception as e:
-        print("FIRST TEST EMAIL ERROR:", str(e), flush=True)
-        return {"success": False, "error": f"Failed to send first test email: {str(e)}"}
-def get_combined_observation(p1, p2):
-    avg = (p1 + p2) / 2
+        return {"success": False, "error": str(e)}
 
-    if avg < 40:
-        return "Across both tests, the student is showing gaps in foundational understanding. This often happens when earlier concepts have not fully settled, making it difficult to build reliably on top."
-    elif avg < 75:
-        return "The student shows a developing understanding across the two levels, with some areas secure and others less consistent. This usually indicates that key concepts are partially understood but not yet fully integrated."
-    else:
-        return "The student demonstrates a solid grasp of the material across both levels. The next step is to confirm how this understanding holds as the level of challenge increases."
 
-def send_consultant_booking_email(booking):
-    lead_manager_email = os.environ.get("LEAD_MANAGER_EMAIL", "kineticcls@gmail.com")
-
-    recipient_email = lead_manager_email
-
-    print("📧 CONSULTANT/MANAGER EMAIL FUNCTION ENTERED", flush=True)
-    
-    print("📧 RECIPIENT:", recipient_email, flush=True)
-
-    qa = booking.get("qualifying_answers") or booking.get("qualifyingAnswers") or {}
-
-    print("📧 QUALIFYING ANSWERS RAW:", qa, flush=True)
-
-   
-
-    answer_maps = {
-        "1": {
-            "1": "Average performance",
-            "2": "Having problems coping",
-            "3": "Needs help",
-            "4": "Can't do homework",
-            "5": "Needs immediate help"
-        },
-        "2": {
-            "1": "My child to be coping with school work",
-            "2": "Someone to be working with my child one-on-one",
-            "3": "I want my child to do homework on their own",
-            "4": "To catch up with classwork"
-        },
-        "3": {
-            "1": "Don't know where to start",
-            "2": "Haven't found good tutoring options",
-            "3": "Too expensive",
-            "4": "No time",
-            "5": "Child is resistant to help"
-        },
-        "4": {
-            "1": "Tutoring center classes that didn't work",
-            "2": "One-on-one coaching that failed to deliver",
-            "3": "I have tried to teach my child myself",
-            "4": "I asked my eldest child who is good at math to help",
-            "5": "Haven't tried anything yet"
-        },
-        "5": {
-            "1": "Elementary (Grades 1-5)",
-            "2": "Middle School (Grades 6-8)",
-            "3": "High School (Grades 9-12)",
-            "4": "Other"
-        },
-        "6": {
-            "1": "1-2 hours",
-            "2": "3-5 hours",
-            "3": "6-10 hours",
-            "4": "As much as needed"
-        },
-        "7": {
-            "1": "Under $100",
-            "2": "$100-$300",
-            "3": "$300-$500",
-            "4": "$500+",
-            "5": "Whatever it takes"
-        },
-        "8": {
-            "1": "Just exploring options",
-            "2": "Within the next month",
-            "3": "Within the next week",
-            "4": "Need help immediately"
-        }
-    }
-    def qa_text(question, fallback="Not provided"):
-        qa_source = qa or {
-            "1": booking.get("performance", ""),
-            "2": booking.get("goal", ""),
-            "3": booking.get("obstacle", ""),
-            "4": booking.get("attempts", ""),
-            "5": booking.get("child_level", ""),
-            "6": booking.get("time_commitment", ""),
-            "7": booking.get("budget", ""),
-            "8": booking.get("urgency", "")
-        }
-        value = str(qa_source.get(question, "")).strip()
-        return answer_maps.get(question, {}).get(value, value or fallback)
-
-    parent_name = booking.get("parent_name", "Parent")
-    parent_email = booking.get("parent_email", "")
-    phone = booking.get("phone", "")
-    student_name = booking.get("student_name", "Student")
-    school_grade = booking.get("school_grade", "")
-    curriculum = booking.get("test_curriculum", "")
-    booking_date = booking.get("booking_date", "")
-    booking_time = booking.get("booking_time", "")
-
-    html_content = f"""
-    <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <h2>NEW SCHROOL LEAD</h2>
-
-        <h3>Customer Profile</h3>
-        <p><strong>Parent Name:</strong> {parent_name}</p>
-        <p><strong>Parent Email:</strong> {parent_email}</p>
-        <p><strong>Phone:</strong> {phone}</p>
-        <p><strong>Student Name:</strong> {student_name}</p>
-        <p><strong>School Grade:</strong> {school_grade}</p>
-        <p><strong>Curriculum:</strong> {curriculum}</p>
-
-        <h3>Booking Details</h3>
-        <p><strong>Date:</strong> {booking_date}</p>
-        <p><strong>Time:</strong> {booking_time}</p>
-
-        <h3>Diagnostic Insights</h3>
-        <p><strong>Current Performance:</strong> {qa_text("1")}</p>
-        <p><strong>90-Day Goal:</strong> {qa_text("2")}</p>
-        <p><strong>Main Obstacle:</strong> {qa_text("3")}</p>
-        <p><strong>Previous Attempts:</strong> {qa_text("4")}</p>
-        <p><strong>Child Level:</strong> {qa_text("5")}</p>
-        <p><strong>Weekly Commitment:</strong> {qa_text("6")}</p>
-        <p><strong>Budget:</strong> {qa_text("7")}</p>
-        <p><strong>Urgency:</strong> {qa_text("8")}</p>
-        <p><strong>Additional Notes:</strong> {booking.get("notes", "None provided")}</p>
-
-        <h3>Consultant Guidance</h3>
-        <p>Review diagnostic results before call. Prioritize understanding learning gaps, urgency, and parent readiness.</p>
-    </body>
-    </html>
-    """
-
-    subject = f"NEW SCHROOL LEAD: {student_name}"
-
-    print("MANAGER EMAIL DEBUG:", recipient_email, subject, flush=True)
-
-    return send_brevo_email(
-        recipient_email,
-        "Schrool Diagnostics",
-        subject,
-        html_content
-    )
-
-def send_parent_booking_confirmation_email(booking):
-    parent_email = booking.get("parent_email", "")
-    parent_name = booking.get("parent_name", "Parent")
-    student_name = booking.get("student_name", "your child")
-    booking_date = booking.get("booking_date", "")
-    booking_time = booking.get("booking_time", "")
-
-    if not parent_email:
-        return {"success": False, "error": "Parent email missing"}
-
-    html_content = f"""
-    <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 650px; margin: 0 auto; padding: 20px;">
-        <h2 style="color:#2563eb;">Your Schrool Results Call is Confirmed</h2>
-
-        <p>Dear {parent_name},</p>
-
-        <p>Your call to go through {student_name}'s diagnostic results has been booked.</p>
-
-        <div style="background:#f9fafb; border-left:4px solid #2563eb; padding:18px; border-radius:8px; margin:25px 0;">
-            <p><strong>Date:</strong> {booking_date}</p>
-            <p><strong>Time:</strong> {booking_time}</p>
-        </div>
-
-        <p>During the call, we will go through what the diagnostic results suggest about {student_name}'s current level and answer any questions you may have.</p>
-
-        <p>Best regards,<br>
-        <strong>Richard & The Schrool Team</strong></p>
-    </body>
-    </html>
-    """
-
-    subject = f"Your Schrool Results Call is Confirmed - {student_name}"
-
-    return send_brevo_email(
-        parent_email,
-        parent_name,
-        subject,
-        html_content
-    )
-
-def send_parent_booking_reminder_email(booking):
-    parent_email = booking.get("parent_email", "")
-    parent_name = booking.get("parent_name", "Parent")
-    student_name = booking.get("student_name", "your child")
-    booking_date = booking.get("booking_date", "")
-    booking_time = booking.get("booking_time", "")
-
-    if not parent_email:
-        return {"success": False, "error": "Parent email missing"}
-
-    html_content = f"""
-    <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 650px; margin: 0 auto; padding: 20px;">
-        <h2 style="color:#2563eb;">Reminder: Your Schrool Call is Tomorrow</h2>
-
-        <p>Dear {parent_name},</p>
-
-        <p>This is a reminder of your scheduled call to go through {student_name}'s diagnostic results.</p>
-
-        <div style="background:#f9fafb; border-left:4px solid #2563eb; padding:18px; border-radius:8px; margin:25px 0;">
-            <p><strong>Date:</strong> {booking_date}</p>
-            <p><strong>Time:</strong> {booking_time}</p>
-        </div>
-
-        <p>We look forward to speaking with you.</p>
-
-        <p>Best regards,<br>
-        <strong>Richard & The Schrool Team</strong></p>
-    </body>
-    </html>
-    """
-
-    subject = f"Reminder: Your Schrool Call Tomorrow - {student_name}"
-
-    return send_brevo_email(
-        parent_email,
-        parent_name,
-        subject,
-        html_content
-    )
 def send_combined_results_email(first_test, second_test):
     try:
         data = {
@@ -793,12 +541,7 @@ def send_combined_results_email(first_test, second_test):
         else:
             next_test_label = singapore_level_label(curriculum, second_grade)
 
-            observation = get_combined_observation(
-                float(str(data.get("test1_score", "0")).replace('%','') or 0),
-                float(str(data.get("test2_score", "0")).replace('%','') or 0)
-            )
-
-            html_content = f"""
+        html_content = f"""
         
         <!DOCTYPE html>
         <html>
@@ -825,51 +568,19 @@ def send_combined_results_email(first_test, second_test):
                     <strong style="color: #059669;">{data.get('test2_score')}%</strong></p>
                     <p style="font-size: 14px; color: #666; margin-left: 20px;">Raw Score: {data.get('test2_raw')}</p>
                 </div>
-                <div style="background-color: #f9fafb; padding: 25px; border-radius: 8px; margin-bottom: 25px; border-left: 4px solid #059669;">
-    
-    <h3 style="color: #065f46; margin-top: 0;">Observation</h3>
-    
-    <p style="font-size: 14px; color: #444;">
-        {observation}
-    </p>
 
-    <br>
+                <div style="background-color: #dbeafe; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <h3 style="color: #1e40af; margin-top: 0; font-size: 18px;">What's Next?</h3>
+                    <p style="color: #1e3a8a;">
+                        Our team will analyze these results and send you personalized recommendations within the next <strong>72 hours</strong>.
+                    </p>
+                </div>
 
-    <h3 style="color: #065f46;">What this means</h3>
-
-    <p style="font-size: 14px; color: #444;">
-        The results are not only a measure of performance, but an indication of how stable the underlying understanding is.
-        <br><br>
-        In many cases, students can appear to cope with a topic, but still rely on fragile methods that do not hold as the level increases.
-    </p>
-
-    <br>
-
-    <p style="font-size: 14px; color: #444;">
-        The purpose of this diagnostic is to identify these patterns early, before they become more difficult to address at higher levels.
-    </p>
-
-    <br>
-
-    <p style="font-size: 14px; color: #444;">
-        If you would like to understand how these results translate into your child’s current level, you can select a suitable time this week and we will go through them with you.
-    </p>
-
-    <br><br>
-
-    <a href="https://test.schrool.net/schrool-fresher/booking.html?email={data.get('parent_email', '')}"
-       style="display:inline-block;background:#2563eb;color:#ffffff;
-       padding:14px 22px;border-radius:8px;text-decoration:none;
-       font-weight:bold;margin-top:10px;">
-       Book a Free Diagnostic Review
-   </a>
-
-</div>
-
-<p style="font-size: 14px; color: #666;">
-    Best regards,<br>
-    <strong>Richard & The Schrool Team</strong>
-</p>
+                <p style="font-size: 14px; color: #666;">
+                    Best regards,<br>
+                    <strong>Richard & The Schrool Team</strong>
+                </p>
+            </div>
         </body>
         </html>
         """
@@ -954,7 +665,6 @@ def submit_test():
         token = data.get("token")
         school_grade_raw = data.get("school_grade")
         send_email_only = bool(data.get("send_email_only", False))
-        single_test_final = bool(data.get("single_test_final", False))
         required_fields = [
             "parent_email",
             "student_name",
@@ -1010,17 +720,15 @@ def submit_test():
         if send_email_only:
             expected_second_year = int(data.get("next_test_grade", 0) or 0)
 
-            if not expected_second_year and not single_test_final:
+            if not expected_second_year:
                 return jsonify({
                     "success": False,
                     "error": "Missing next_test_grade for email-only flow"
                 }), 400
 
-            if expected_second_year:
-                data["next_test_grade"] = expected_second_year
+            data["next_test_grade"] = expected_second_year
 
             # store or refresh first test record before sending email
-            
             store_first_test(student_key, data, expected_second_year)
 
             result = send_first_test_email(data)
@@ -1075,15 +783,22 @@ def submit_test():
                     "stored_only": True,
                 }), 200
 
-            # first test was stored successfully
-            # do not send first email here
+            # delayed flow from backend, if ever used directly
+            result = send_first_test_email(data)
+
+            if result.get("success"):
+                return jsonify({
+                    "success": True,
+                    "message": "First test email sent successfully",
+                    "email": data["parent_email"],
+                    "test_number": 1
+                }), 200
+
             return jsonify({
-                "success": True,
-                "message": "First test stored successfully without email",
-                "email": data["parent_email"],
-                "test_number": 1,
-                "stored_only": True
-            }), 200
+                "success": False,
+                "error": result.get("error", "Failed to send email"),
+            }), 500
+
         # SECOND TEST
         first_test = get_first_test(student_key)
         if not first_test:
@@ -1142,225 +857,7 @@ def internal_error(error):
 # ============================================================================
 # APPLICATION ENTRY POINT
 # ============================================================================
-# ============================================================
-# BOOKING SYSTEM
-# ============================================================
 
-def get_booking_db():
-    database_url = os.environ.get("DATABASE_URL")
-    if not database_url:
-        raise Exception("DATABASE_URL is not set. Booking system requires Heroku Postgres.")
-
-    return psycopg2.connect(database_url)
-
-
-def init_booking_table():
-    conn = get_booking_db()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS bookings (
-            id SERIAL PRIMARY KEY,
-            parent_name TEXT,
-            parent_email TEXT,
-            phone TEXT,
-            student_name TEXT,
-            school_grade TEXT,
-            test_curriculum TEXT,
-            booking_date TEXT,
-            booking_time TEXT,
-            performance TEXT,
-            goal TEXT,
-            obstacle TEXT,
-            attempts TEXT,
-            time_commitment TEXT,
-            budget TEXT,
-            urgency TEXT,
-            notes TEXT,
-            consultant_email TEXT,
-            reminder_sent INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-@app.route("/api/booking-slots", methods=["GET"])
-def get_booking_slots():
-    try:
-        init_booking_table()
-
-        conn = get_booking_db()
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT booking_date, booking_time
-            FROM bookings
-        """)
-
-        rows = cursor.fetchall()
-
-        cursor.close()
-        conn.close()
-
-        booked_slots = [
-            {
-                "booking_date": row[0],
-                "booking_time": row[1]
-            }
-            for row in rows
-        ]
-
-        return jsonify({
-            "success": True,
-            "booked_slots": booked_slots
-        }), 200
-
-    except Exception as e:
-        print("BOOKING SLOTS ERROR:", str(e), flush=True)
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
-
-@app.route("/api/book-slot", methods=["POST", "OPTIONS"])
-def book_slot():
-    if request.method == "OPTIONS":
-        return jsonify({"success": True}), 200
-
-    try:
-        init_booking_table()
-
-        data = request.get_json() or {}
-        print("BOOK SLOT FULL DATA:", data, flush=True)
-
-        booking_date = data.get("booking_date")
-        booking_time = data.get("booking_time")
-        parent_email = data.get("parent_email", "").strip().lower()
-
-        if not booking_date or not booking_time:
-            return jsonify({
-                "success": False,
-                "error": "Missing booking date or time"
-            }), 400
-
-        if not parent_email:
-            return jsonify({
-                "success": False,
-                "error": "Missing parent email"
-            }), 400
-
-        conn = get_booking_db()
-        cursor = conn.cursor()
-
-        # Prevent repeat booking by same email
-        cursor.execute("""
-            SELECT id FROM bookings
-            WHERE LOWER(parent_email) = %s
-        """, (parent_email,))
-
-        existing_email = cursor.fetchone()
-
-        if existing_email:
-            cursor.close()
-            conn.close()
-            return jsonify({
-                "success": False,
-                "error": "A booking already exists for this email address"
-            }), 409
-
-        # Prevent double booking of same slot
-        cursor.execute("""
-            SELECT id FROM bookings
-            WHERE booking_date = %s AND booking_time = %s
-        """, (booking_date, booking_time))
-
-        existing_slot = cursor.fetchone()
-
-        if existing_slot:
-            cursor.close()
-            conn.close()
-            return jsonify({
-                "success": False,
-                "error": "This time slot has already been booked"
-            }), 409
-
-        cursor.execute("""
-            INSERT INTO bookings (
-                parent_name,
-                parent_email,
-                phone,
-                student_name,
-                school_grade,
-                test_curriculum,
-                booking_date,
-                booking_time,
-                performance,
-                goal,
-                obstacle,
-                attempts,
-                time_commitment,
-                budget,
-                urgency,
-                notes,
-                consultant_email
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            data.get("parent_name", ""),
-            parent_email,
-            data.get("phone", ""),
-            data.get("student_name", ""),
-            data.get("school_grade", ""),
-            data.get("test_curriculum", ""),
-            booking_date,
-            booking_time,
-            data.get("performance", ""),
-            data.get("goal", ""),
-            data.get("obstacle", ""),
-            data.get("attempts", ""),
-            data.get("time_commitment", ""),
-            data.get("budget", ""),
-            data.get("urgency", ""),
-            data.get("notes", ""),
-            data.get("consultant_email", "")
-        ))
-
-        conn.commit()
-
-        cursor.close()
-        conn.close()
-
-        qa = data.get("qualifying_answers") or data.get("qualifyingAnswers") or {}
-
-        data["performance"] = data.get("performance") or str(qa.get("1", ""))
-        data["goal"] = data.get("goal") or str(qa.get("2", ""))
-        data["obstacle"] = data.get("obstacle") or str(qa.get("3", ""))
-        data["attempts"] = data.get("attempts") or str(qa.get("4", ""))
-        data["time_commitment"] = data.get("time_commitment") or str(qa.get("6", ""))
-        data["budget"] = data.get("budget") or str(qa.get("7", ""))
-        data["urgency"] = data.get("urgency") or str(qa.get("8", ""))
-        data["notes"] = data.get("notes") or str(qa.get("9", ""))
-
-        send_consultant_booking_email(data)
-        send_parent_booking_confirmation_email(data)
-
-        return jsonify({
-            "success": True,
-            "message": "Booking confirmed",
-            "booking_date": booking_date,
-            "booking_time": booking_time
-        }), 200
-
-    except Exception as e:
-        print("BOOK SLOT ERROR:", str(e), flush=True)
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
