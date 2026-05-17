@@ -638,7 +638,7 @@ def send_consultant_booking_email(booking):
         <p><strong>Weekly Commitment:</strong> {qa_text("6")}</p>
         <p><strong>Budget:</strong> {qa_text("7")}</p>
         <p><strong>Urgency:</strong> {qa_text("8")}</p>
-        <p><strong>Additional Notes:</strong> {booking.get("notes", "None provided")}</p>
+        <p><strong>Additional Notes:</strong> {notes or "None provided"}</p>
 
         <h3>Consultant Guidance</h3>
         <p>Review diagnostic results before call. Prioritize understanding learning gaps, urgency, and parent readiness.</p>
