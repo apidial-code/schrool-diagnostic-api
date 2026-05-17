@@ -755,7 +755,20 @@ def send_combined_results_email(first_test, second_test):
             "test2_score": second_test.get("test2_score", second_test.get("percentage", "N/A")),
             "test2_raw": second_test.get("test2_raw") or f"{second_test.get('score', 0)}/{second_test.get('maxScore', second_test.get('total', 0))}",
         }
-        curriculum = (
+            qa = second_test.get("qualifying_answers", {})
+            cp = second_test.get("consultantProfile", {}) or second_test.get("consultant_profile", {})
+
+            performance = cp.get("performance") or qa.get("1", "")
+            goal = cp.get("goal") or qa.get("2", "")
+            obstacle = cp.get("obstacle") or qa.get("3", "")
+            attempts = cp.get("attempts") or qa.get("4", "")
+            child_level = cp.get("child_level") or qa.get("5", "")
+            time_commitment = cp.get("time_commitment") or qa.get("6", "")
+            budget = cp.get("budget") or qa.get("7", "")
+            urgency = cp.get("urgency") or qa.get("8", "")
+            notes = cp.get("notes") or qa.get("9", "")
+
+            curriculum = (
             data.get("test_curriculum")
             or first_test.get("test_curriculum")
             or second_test.get("test_curriculum")
