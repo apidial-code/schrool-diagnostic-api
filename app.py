@@ -759,7 +759,7 @@ def send_combined_results_email(first_test, second_test):
         qa = second_test.get("qualifying_answers", {})
         cp = second_test.get("consultantProfile", {}) or second_test.get("consultant_profile", {})
 
-        performance = cp.get("performance") or qa.get("1", "")
+            performance = cp.get("performance") or qa.get("1", "")
             goal = cp.get("goal") or qa.get("2", "")
             obstacle = cp.get("obstacle") or qa.get("3", "")
             attempts = cp.get("attempts") or qa.get("4", "")
