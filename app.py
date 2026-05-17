@@ -531,18 +531,6 @@ def send_consultant_booking_email(booking):
 
     qa = booking.get("qualifying_answers") or booking.get("qualifyingAnswers") or {}
 
-    cp = booking.get("consultantProfile") or booking.get("consultant_profile") or {}
-
-    performance = cp.get("performance") or qa.get("1", "")
-    goal = cp.get("goal") or qa.get("2", "")
-    obstacle = cp.get("obstacle") or qa.get("3", "")
-    attempts = cp.get("attempts") or qa.get("4", "")
-    child_level = cp.get("child_level") or qa.get("5", "")
-    time_commitment = cp.get("time_commitment") or qa.get("6", "")
-    budget = cp.get("budget") or qa.get("7", "")
-    urgency = cp.get("urgency") or qa.get("8", "")
-    notes = cp.get("notes") or qa.get("9", "")
-
     print("📧 QUALIFYING ANSWERS RAW:", qa, flush=True)
 
    
@@ -650,7 +638,7 @@ def send_consultant_booking_email(booking):
         <p><strong>Weekly Commitment:</strong> {qa_text("6")}</p>
         <p><strong>Budget:</strong> {qa_text("7")}</p>
         <p><strong>Urgency:</strong> {qa_text("8")}</p>
-        <p><strong>Additional Notes:</strong> {notes or "None provided"}</p>
+        <p><strong>Additional Notes:</strong> {booking.get("notes", "None provided")}</p>
 
         <h3>Consultant Guidance</h3>
         <p>Review diagnostic results before call. Prioritize understanding learning gaps, urgency, and parent readiness.</p>
@@ -766,26 +754,12 @@ def send_combined_results_email(first_test, second_test):
             "test2_name": second_test.get("test2_name") or f"Year {second_test.get('grade') or second_test.get('test_grade', '')}",
             "test2_score": second_test.get("test2_score", second_test.get("percentage", "N/A")),
             "test2_raw": second_test.get("test2_raw") or f"{second_test.get('score', 0)}/{second_test.get('maxScore', second_test.get('total', 0))}",
-            }
-            
-        qa = second_test.get("qualifying_answers", {})
-        cp = second_test.get("consultantProfile", {}) or second_test.get("consultant_profile", {})
-
-        performance = cp.get("performance") or qa.get("1", "")
-        goal = cp.get("goal") or qa.get("2", "")
-        obstacle = cp.get("obstacle") or qa.get("3", "")
-        attempts = cp.get("attempts") or qa.get("4", "")
-        child_level = cp.get("child_level") or qa.get("5", "")
-        time_commitment = cp.get("time_commitment") or qa.get("6", "")
-        budget = cp.get("budget") or qa.get("7", "")
-        urgency = cp.get("urgency") or qa.get("8", "")
-        notes = cp.get("notes") or qa.get("9", "")   
-
+        }
         curriculum = (
-                data.get("test_curriculum")
-                or first_test.get("test_curriculum")
-                or second_test.get("test_curriculum")
-                or "Singapore"
+            data.get("test_curriculum")
+            or first_test.get("test_curriculum")
+            or second_test.get("test_curriculum")
+            or "Singapore"
         )
 
         completed_test_label = singapore_level_label(
@@ -976,7 +950,6 @@ def submit_test():
 
     try:
         data = request.get_json(silent=True) or {}
-        print("SUBMIT TEST FULL DATA:", data, flush=True)
         is_first_test = bool(data.get("is_first_test", False))
         token = data.get("token")
         school_grade_raw = data.get("school_grade")
@@ -1134,10 +1107,6 @@ def submit_test():
         
         print("FIRST TEST DATA:", first_test)
         print("SECOND TEST DATA:", second_test)
-        second_test["consultantProfile"] = data.get("consultantProfile") or data.get("consultant_profile") or {}
-        second_test["qualifying_answers"] = data.get("qualifying_answers") or data.get("qualifyingAnswers") or {}
-        print("CONSULTANT PROFILE:", second_test["consultantProfile"], flush=True)
-        print("QUALIFYING ANSWERS:", second_test["qualifying_answers"], flush=True)
         result = send_combined_results_email(first_test, second_test)
         
         if result.get("success"):
