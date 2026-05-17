@@ -601,9 +601,6 @@ def send_consultant_booking_email(booking):
             "8": booking.get("urgency", "")
         }
 
-    value = str(qa_source.get(question, "")).strip()
-    return answer_maps.get(question, {}).get(value, value or fallback)
-        
     parent_name = booking.get("parent_name", "Parent")
     parent_email = booking.get("parent_email", "")
     phone = booking.get("phone", "")
