@@ -754,7 +754,8 @@ def send_combined_results_email(first_test, second_test):
             "test2_name": second_test.get("test2_name") or f"Year {second_test.get('grade') or second_test.get('test_grade', '')}",
             "test2_score": second_test.get("test2_score", second_test.get("percentage", "N/A")),
             "test2_raw": second_test.get("test2_raw") or f"{second_test.get('score', 0)}/{second_test.get('maxScore', second_test.get('total', 0))}",
-        }
+            }
+            
             qa = second_test.get("qualifying_answers", {})
             cp = second_test.get("consultantProfile", {}) or second_test.get("consultant_profile", {})
 
@@ -769,10 +770,10 @@ def send_combined_results_email(first_test, second_test):
             notes = cp.get("notes") or qa.get("9", "")
 
             curriculum = (
-            data.get("test_curriculum")
-            or first_test.get("test_curriculum")
-            or second_test.get("test_curriculum")
-            or "Singapore"
+                data.get("test_curriculum")
+                or first_test.get("test_curriculum")
+                or second_test.get("test_curriculum")
+                or "Singapore"
         )
 
         completed_test_label = singapore_level_label(
