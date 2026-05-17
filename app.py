@@ -950,6 +950,7 @@ def submit_test():
 
     try:
         data = request.get_json(silent=True) or {}
+        print("SUBMIT TEST FULL DATA:", data, flush=True)
         is_first_test = bool(data.get("is_first_test", False))
         token = data.get("token")
         school_grade_raw = data.get("school_grade")
