@@ -857,7 +857,7 @@ def send_combined_results_email(first_test, second_test):
 
     <br><br>
 
-    <a href="https://test.schrool.net/schrool-fresher/booking.html?email={parent_email}"
+    <a href="https://test.schrool.net/schrool-fresher/booking.html?email={data.get('parent_email', '')}"
        style="display:inline-block;background:#2563eb;color:#ffffff;
        padding:14px 22px;border-radius:8px;text-decoration:none;
        font-weight:bold;margin-top:10px;">
