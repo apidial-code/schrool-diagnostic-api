@@ -469,6 +469,31 @@ def send_first_test_email(data):
                 </div>
 
                 <p style="font-size: 14px; color: #666;">
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+
+                <div style="text-align:center; margin: 30px 0;">
+                    <h2 style="color:#2c3e50; margin-bottom:15px;">
+                        Ready for a deeper understanding of your child's math needs?
+                    </h2>
+
+                    <p style="font-size:16px; color:#555; max-width:600px; margin:0 auto 20px;">
+                        Book a free consultation and let us walk you through your child's results, identify learning gaps, and discuss the best next steps.
+                    </p>
+
+                    <a href="https://test.schrool.net/schrool-fresher/booking.html"
+                       style="
+                            display:inline-block;
+                            background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color:white;
+                            padding:16px 32px;
+                            text-decoration:none;
+                            border-radius:10px;
+                            font-size:18px;
+                            font-weight:bold;
+                        ">
+                        Book My Free Consultation
+                     </a>
+                 </div>
                     Best regards,<br>
                     <strong>Richard & The Schrool Team</strong>
                 </p>
