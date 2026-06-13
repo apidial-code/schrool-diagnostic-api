@@ -690,7 +690,7 @@ def send_followup_email(data):
 
 booked_slots = []
 
-CONSULTANT_EMAIL = "apidia@gmail.com"
+CONSULTANT_EMAIL = "apidial@gmail.com"
 CONSULTANT_NAME = "Richard"
 
 def cors_response(response, status=200):
