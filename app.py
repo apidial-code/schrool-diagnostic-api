@@ -1076,6 +1076,7 @@ def submit_test():
         
         print("FIRST TEST DATA:", first_test)
         print("SECOND TEST DATA:", second_test)
+        store_second_test(student_key, data)
         result = send_combined_results_email(first_test, second_test)
         
         if result.get("success"):
