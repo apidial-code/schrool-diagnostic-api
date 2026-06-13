@@ -595,9 +595,10 @@ def send_combined_results_email(first_test, second_test):
                 </div>
 
                 <div style="background-color: #dbeafe; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-                    <h3 style="color: #1e40af; margin-top: 0; font-size: 18px;">What's Next?</h3>
+                    <h3 style="color: #1e40af; margin-top: 0; font-size: 18px;">What's next?</h3>
+                          <p>Your diagnostic is now complete.</p>
                     <p style="color: #1e3a8a;">
-                        Our team will analyze these results and send you personalized recommendations within the next <strong>72 hours</strong>.
+                        You may now book a free consultation to review the results, identify learning gaps, and discuss the most appropriate next steps for your child.
                     </p>
                 </div>
                 <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
