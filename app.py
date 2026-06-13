@@ -740,6 +740,50 @@ def book_slot():
         booking_date = str(data.get("booking_date")).strip()
         booking_time = str(data.get("booking_time")).strip()
         parent_email = str(data.get("parent_email")).strip().lower()
+        diagnostic = None
+
+        try:
+            with get_db() as conn:
+                diagnostic = conn.execute(
+                    """
+                    SELECT
+                        test1_name,
+                        test1_score,
+                        test1_raw,
+                        test2_name,
+                        test2_score,
+                        test2_raw
+                    FROM test_results
+                    WHERE LOWER(parent_email) = ?
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """,
+                    (parent_email,)
+                ).fetchone()
+        except Exception as e:
+            print("Diagnostic results lookup error:", e)
+
+        if diagnostic:
+            test1_name = diagnostic["test1_name"] or "Test 1"
+            test1_score = diagnostic["test1_score"] if diagnostic["test1_score"] is not None else "N/A"
+            test1_raw = diagnostic["test1_raw"] or "N/A"
+
+            test2_name = diagnostic["test2_name"] or "Test 2"
+            test2_score = diagnostic["test2_score"] if diagnostic["test2_score"] is not None else "N/A"
+            test2_raw = diagnostic["test2_raw"] or "N/A"
+
+            try:
+                interpretation_summary = get_interpretation(int(test2_score))
+            except Exception:
+                interpretation_summary = "Interpretation not available."
+        else:
+            test1_name = "Test 1"
+            test1_score = "N/A"
+            test1_raw = "N/A"
+            test2_name = "Test 2"
+            test2_score = "N/A"
+            test2_raw = "N/A"
+            interpretation_summary = "Diagnostic results were not found for this booking email."
 
         # Prevent same slot being booked twice
         for slot in booked_slots:
@@ -797,6 +841,17 @@ def book_slot():
         <h3>Booking</h3>
         <p><strong>Date:</strong> {booking_date}</p>
         <p><strong>Time:</strong> {booking_time}</p>
+        <h3>Diagnostic Results Summary</h3>
+
+        <p><strong>Test 1:</strong> {test1_name}</p>
+        <p><strong>Test 1 Score:</strong> {test1_score}%</p>
+        <p><strong>Test 1 Raw Score:</strong> {test1_raw}</p>
+
+        <p><strong>Test 2:</strong> {test2_name}</p>
+        <p><strong>Test 2 Score:</strong> {test2_score}%</p>
+        <p><strong>Test 2 Raw Score:</strong> {test2_raw}</p>
+
+        <p><strong>Interpretation Summary:</strong> {interpretation_summary}</p>
 
         <h3>Parent Questionnaire</h3>
         <p><strong>1. Current situation:</strong> {data.get("performance", "")}</p>
