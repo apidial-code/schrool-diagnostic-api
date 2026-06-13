@@ -684,7 +684,166 @@ def send_followup_email(data):
 
     except Exception as e:
         return {"success": False, "error": str(e)}
+# ============================================================================
+# CONSULTATION BOOKING ENDPOINTS
+# ============================================================================
 
+booked_slots = []
+
+CONSULTANT_EMAIL = "apidia@gmail.com"
+CONSULTANT_NAME = "Richard"
+
+def cors_response(response, status=200):
+    response.headers.add("Access-Control-Allow-Origin", "https://test.schrool.net")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+    response.headers.add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+    return response, status
+
+
+@app.route("/api/booking-slots", methods=["GET", "OPTIONS"])
+def booking_slots():
+    if request.method == "OPTIONS":
+        return cors_response(jsonify({"status": "ok"}), 200)
+
+    return cors_response(jsonify({
+        "success": True,
+        "booked_slots": booked_slots
+    }), 200)
+
+
+@app.route("/api/book-slot", methods=["POST", "OPTIONS"])
+def book_slot():
+    if request.method == "OPTIONS":
+        return cors_response(jsonify({"status": "ok"}), 200)
+
+    try:
+        data = request.get_json(silent=True) or {}
+
+        required_fields = [
+            "parent_name",
+            "parent_email",
+            "student_name",
+            "school_grade",
+            "booking_date",
+            "booking_time"
+        ]
+
+        missing = [field for field in required_fields if not data.get(field)]
+
+        if missing:
+            return cors_response(jsonify({
+                "success": False,
+                "error": "Missing required fields",
+                "missing": missing
+            }), 400)
+
+        booking_date = str(data.get("booking_date")).strip()
+        booking_time = str(data.get("booking_time")).strip()
+        parent_email = str(data.get("parent_email")).strip().lower()
+
+        # Prevent same slot being booked twice
+        for slot in booked_slots:
+            if (
+                str(slot.get("booking_date")).strip() == booking_date
+                and str(slot.get("booking_time")).strip() == booking_time
+            ):
+                return cors_response(jsonify({
+                    "success": False,
+                    "error": "This slot is already booked."
+                }), 409)
+
+        # Prevent same parent booking multiple times
+        for slot in booked_slots:
+            if str(slot.get("parent_email", "")).strip().lower() == parent_email:
+                return cors_response(jsonify({
+                    "success": False,
+                    "error": "This email has already booked a consultation."
+                }), 409)
+
+        booked_slots.append({
+            "booking_date": booking_date,
+            "booking_time": booking_time,
+            "parent_email": parent_email,
+            "parent_name": data.get("parent_name"),
+            "student_name": data.get("student_name")
+        })
+
+        qualifying = data.get("qualifying_answers") or data.get("qualifyingAnswers") or {}
+
+        parent_html = f"""
+        <h2>Your Schrool Consultation Booking Is Confirmed</h2>
+        <p>Dear {data.get("parent_name", "Parent")},</p>
+        <p>Your consultation has been booked.</p>
+        <p><strong>Date:</strong> {booking_date}</p>
+        <p><strong>Time:</strong> {booking_time}</p>
+        <p><strong>Student:</strong> {data.get("student_name", "")}</p>
+        <p><strong>School Grade:</strong> {data.get("school_grade", "")}</p>
+        <p>Kind regards,<br><strong>Schrool Team</strong></p>
+        """
+
+        consultant_html = f"""
+        <h2>New Schrool Consultation Booking</h2>
+
+        <h3>Parent Details</h3>
+        <p><strong>Name:</strong> {data.get("parent_name", "")}</p>
+        <p><strong>Email:</strong> {data.get("parent_email", "")}</p>
+        <p><strong>Phone:</strong> {data.get("phone", "")}</p>
+
+        <h3>Student Details</h3>
+        <p><strong>Student:</strong> {data.get("student_name", "")}</p>
+        <p><strong>School Grade:</strong> {data.get("school_grade", "")}</p>
+        <p><strong>Curriculum:</strong> {data.get("test_curriculum", "")}</p>
+
+        <h3>Booking</h3>
+        <p><strong>Date:</strong> {booking_date}</p>
+        <p><strong>Time:</strong> {booking_time}</p>
+
+        <h3>Parent Questionnaire</h3>
+        <p><strong>1. Current situation:</strong> {data.get("performance", "")}</p>
+        <p><strong>2. Goal:</strong> {data.get("goal", "")}</p>
+        <p><strong>3. Main obstacle:</strong> {data.get("obstacle", "")}</p>
+        <p><strong>4. Previous support:</strong> {data.get("attempts", "")}</p>
+        <p><strong>5. Urgency:</strong> {data.get("child_level", "")}</p>
+        <p><strong>6. Support level:</strong> {data.get("time_commitment", "")}</p>
+        <p><strong>7. Paid course comfort:</strong> {data.get("budget", "")}</p>
+        <p><strong>8. Start timeframe:</strong> {data.get("urgency", "")}</p>
+        <p><strong>9. Additional context:</strong> {data.get("additional_context", "")}</p>
+
+        <h3>Additional Notes</h3>
+        <p>{data.get("notes", "")}</p>
+        """
+
+        parent_email_result = send_brevo_email(
+            data.get("parent_email"),
+            data.get("parent_name", "Parent"),
+            "Your Schrool Consultation Booking Is Confirmed",
+            parent_html
+        )
+
+        consultant_email_result = send_brevo_email(
+            CONSULTANT_EMAIL,
+            CONSULTANT_NAME,
+            "New Schrool Consultation Booking",
+            consultant_html
+        )
+
+        return cors_response(jsonify({
+            "success": True,
+            "message": "Booking confirmed",
+            "booking": {
+                "booking_date": booking_date,
+                "booking_time": booking_time
+            },
+            "parent_email_result": parent_email_result,
+            "consultant_email_result": consultant_email_result
+        }), 200)
+
+    except Exception as e:
+        print("BOOK SLOT ERROR:", str(e))
+        return cors_response(jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500)
 # ============================================================================
 # MAIN API ENDPOINT
 # ============================================================================
