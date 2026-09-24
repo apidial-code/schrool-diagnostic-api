@@ -834,9 +834,9 @@ def book_slot():
         <p><strong>2. Goal:</strong> {data.get("goal", "")}</p>
         <p><strong>3. Main obstacle:</strong> {data.get("obstacle", "")}</p>
         <p><strong>4. Previous support:</strong> {data.get("attempts", "")}</p>
-        <p><strong>5. Urgency:</strong> {data.get("child_level", "")}</p>
-        <p><strong>6. Support level:</strong> {data.get("time_commitment", "")}</p>
-        <p><strong>7. Paid course comfort:</strong> {data.get("budget", "")}</p>
+        <p><strong>5. Diagnostic focus:</strong> {data.get("child_level", "")}</p>
+        <p><strong>6. Weekly time available:</strong> {data.get("time_commitment", "")}</p>
+        <p><strong>7. Support consideration:</strong> {data.get("budget", "")}</p>
         <p><strong>8. Start timeframe:</strong> {data.get("urgency", "")}</p>
         <p><strong>9. Additional context:</strong> {data.get("additional_context", "")}</p>
 
