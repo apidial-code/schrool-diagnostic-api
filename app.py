@@ -181,7 +181,7 @@ def store_first_test(student_key, data, expected_second_year):
                 int(data["percentage"]),
                 f"{data['score']}/{data['total']}",
                 int(data["test_grade"]),
-                int(expected_second_year),
+                int(expected_second_year) if expected_second_year is not None else None,
                 now,
                 now,
             ),
@@ -485,7 +485,74 @@ def send_first_test_email(data):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+def send_single_test_results_email(data):
+    try:
+        student_name = data.get("student_name", "Student")
+        parent_name = data.get("parent_name", "Parent")
+        curriculum = data.get("test_curriculum", "")
+        test_grade = data.get("test_grade", "")
+        percentage = data.get("percentage", 0)
+        score = data.get("score", 0)
+        total = data.get("total", 0)
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                 <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Congratulations!</h1>
+            </div>
+                <div style="background-color: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+            <p style="font-size: 16px; margin-bottom: 20px;">Dear {parent_name},</p>
 
+            <p style="font-size: 16px; margin-bottom: 25px;">
+                <strong>{student_name}</strong> has completed the diagnostic test.
+            </p>
+
+            <div style="background-color: #ecfdf5; padding: 25px; border-radius: 8px; border-left: 4px solid #059669; margin-bottom: 25px;">
+                <h2 style="color: #065f46; margin-top: 0; font-size: 20px;">Complete Results Summary</h2>
+
+                <p><strong>{curriculum} Year {test_grade}:</strong>
+                <strong style="color: #059669;">{percentage}%</strong></p>
+
+                <p style="font-size: 14px; color: #666; margin-left: 20px;">Raw Score: {score}/{total}</p>
+            </div>
+                <div style="background-color: #dbeafe; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                <h3 style="color: #1e40af; margin-top: 0; font-size: 18px;">What's next?</h3>
+                <p>Your diagnostic is now complete.</p>
+                <p style="color: #1e3a8a;">
+                    You may now book a free consultation to review the result, identify any learning gaps, and discuss the most appropriate next steps for your child.
+                </p>
+            </div>
+
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+            <div style="text-align:center; margin: 30px 0;">
+                <h2 style="color:#2c3e50; margin-bottom:15px;">
+                    Ready for a deeper understanding of your child's math needs?
+                </h2>
+
+                <p style="font-size:16px; color:#555; max-width:600px; margin:0 auto 20px;">
+                    Book a free consultation and let us walk you through your child's result, identify learning gaps, and discuss the most appropriate next steps.
+                </p>
+
+                <a href="https://test.schrool.net/schrool-fresher/booking.html"
+                   style="display:inline-block; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; padding:16px 28px; border-radius:8px; text-decoration:none; font-weight:bold;">
+                    Book My Free Consultation
+                </a>
+            </div>
+                <p style="font-size: 14px; color: #666;">
+                    Best regards,<br>
+                    <strong>Richard & The Schrool Team</strong>
+                </p>
+            </div>
+    </body>
+    </html>
+    """
+
+        subject = f"🎉 Complete Diagnostic Results for {student_name}"
+        return send_brevo_email(data["parent_email"], parent_name, subject, html_content)
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 def send_combined_results_email(first_test, second_test):
     try:
         data = {
@@ -979,11 +1046,32 @@ def submit_test():
 
         # ACTUAL FIRST TEST SUBMISSION
         if is_first_test:
+        
             if not school_grade_raw:
                 return jsonify({
                     "success": False,
                     "error": "Missing required field: school_grade"
                 }), 400
+        
+            # YEAR 5 SINGLE-TEST DIAGNOSTIC
+            if str(school_grade_raw) == "5" and int(data["test_grade"]) == 4:
+                store_first_test(student_key, data, None)
+                result = send_single_test_results_email(data)
+
+                if result.get("success"):
+                    return jsonify({
+                    "success": True,
+                    "message": "Single-test diagnostic completed successfully",
+                    "email": data["parent_email"],
+                    "test_number": 1,
+                    "diagnostic_complete": True
+                }), 200
+
+                return jsonify({
+                "success": False,
+                "error": result.get("error", "Failed to send single-test results email")
+            }), 500
+
 
             student_year = int(school_grade_raw)
             first_test_year = int(data["test_grade"])
