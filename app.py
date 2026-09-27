@@ -461,7 +461,7 @@ def send_first_test_email(data):
                 <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 25px;">
                     <h3 style="color: #92400e; margin-top: 0; font-size: 18px;">Next Test to Complete</h3>
                     <p><strong>{data['test_curriculum']} {next_test_label}</strong></p>
-                    <p>Please complete this second test within 48 hours so we can provide a full diagnosis of your child's math situation.</p>
+                    <p>Please complete the second test within 48 hours so we can show both results together.</p>
                     <p><strong>Link expires:</strong> {deadline_str}</p>
                 </div>
 
