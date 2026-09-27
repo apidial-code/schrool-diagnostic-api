@@ -352,7 +352,11 @@ def send_brevo_email(to_email, to_name, subject, html_content):
             "content-type": "application/json",
         }
 
-        response = requests.post(BREVO_API_URL, json=payload, headers=headers, timeout=20)
+        fixie_url = os.environ.get("FIXIE_URL")
+        brevo_proxies = {"http": fixie_url, "https": fixie_url} if fixie_url else None
+        response = requests.post(
+            BREVO_API_URL, json=payload, headers=headers, proxies=brevo_proxies, timeout=20
+        )
 
         if response.status_code in [200, 201]:
             return {"success": True, "message": "Email sent successfully", "email": to_email}
