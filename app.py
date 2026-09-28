@@ -524,10 +524,9 @@ def send_single_test_results_email(data):
                 <h3 style="color: #1e40af; margin-top: 0; font-size: 18px;">What's next?</h3>
                 <p>Your diagnostic is now complete.</p>
                 <p style="color: #1e3a8a;">
-                    You may now book a free consultation to review the result, identify any learning gaps, and discuss the most appropriate next steps for your child.
+                    If you would like to discuss your child's result, you can book a free consultation to consider possible next steps together.
                 </p>
             </div>
-
             <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
             <div style="text-align:center; margin: 30px 0;">
                 <h2 style="color:#2c3e50; margin-bottom:15px;">
