@@ -643,7 +643,7 @@ def send_combined_results_email(first_test, second_test):
                     <h3 style="color: #1e40af; margin-top: 0; font-size: 18px;">What's next?</h3>
                           <p>Your diagnostic is now complete.</p>
                     <p style="color: #1e3a8a;">
-                        You may now book a free consultation to review the results, identify learning gaps, and discuss the most appropriate next steps for your child.
+                        If you would like to discuss your child's results, you can book a free consultation to consider possible next steps together.
                     </p>
                 </div>
                 <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
