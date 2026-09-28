@@ -260,7 +260,7 @@ def get_interpretation(percentage):
         return "Fair performance. Your child understands basic concepts but needs support in several areas."
     if percentage >= 40:
         return "Your child is struggling with many concepts at this level and would benefit from targeted support."
-    return "Your child needs significant support. Consider working with a tutor to build foundational skills."
+    return "These results suggest that several concepts at this level may need another look. You can decide whether additional support would be useful."
 
 
 def get_performance_level(percentage):
