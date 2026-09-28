@@ -654,7 +654,7 @@ def send_combined_results_email(first_test, second_test):
                     </h2>
 
                     <p style="font-size:16px; color:#555; max-width:600px; margin:0 auto 20px;">
-                        Book a free consultation and let us walk you through your child's results, identify learning gaps, and discuss the best next steps.
+                        If you would like to talk through your child's results, you can book a free consultation to consider what may be useful next.
                     </p>
 
                     <a href="https://test.schrool.net/schrool-fresher/booking.html"
