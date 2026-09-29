@@ -16,6 +16,10 @@ from datetime import datetime, timedelta
 import requests
 import sqlite3
 import secrets
+import json
+from html import escape
+from contextlib import closing
+import psycopg2
 from contextlib import contextmanager
 
 def singapore_level_label(curriculum, grade):
@@ -736,6 +740,52 @@ def send_followup_email(data):
 
 booked_slots = []
 
+def intake_connection():
+    return psycopg2.connect(os.environ["DATABASE_URL"], sslmode="require")
+
+
+def ensure_intake_table(cursor):
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS diagnostic_intake (
+            parent_email TEXT PRIMARY KEY,
+            answers_json TEXT NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    """)
+
+
+@app.route("/api/diagnostic-intake", methods=["POST", "OPTIONS"])
+def save_diagnostic_intake():
+    if request.method == "OPTIONS":
+        return cors_response(jsonify({"status": "ok"}), 200)
+
+    data = request.get_json(silent=True) or {}
+    email = str(data.get("parent_email") or "").strip().lower()
+    answers = data.get("answers")
+    if not email or "@" not in email or not isinstance(answers, dict) or any(
+        not str(answers.get(str(i)) or "").strip() for i in range(1, 9)
+    ):
+        return cors_response(jsonify({"success": False, "error": "Incomplete diagnostic intake."}), 400)
+
+    selected = {str(i): str(answers.get(str(i)) or "").strip()[:2000] for i in range(1, 10)}
+    try:
+        with closing(intake_connection()) as conn:
+            with conn:
+                with conn.cursor() as cursor:
+                    ensure_intake_table(cursor)
+                    cursor.execute("""
+                        INSERT INTO diagnostic_intake (parent_email, answers_json)
+                        VALUES (%s, %s)
+                        ON CONFLICT (parent_email) DO UPDATE SET
+                            answers_json = EXCLUDED.answers_json,
+                            updated_at = NOW()
+                    """, (email, json.dumps(selected, ensure_ascii=False)))
+        return cors_response(jsonify({"success": True}), 200)
+    except Exception as error:
+        print("DIAGNOSTIC INTAKE DB ERROR:", type(error).__name__)
+        return cors_response(jsonify({"success": False, "error": "Unable to save intake."}), 503)
+
+
 CONSULTANT_EMAIL = "apidial@gmail.com"
 CONSULTANT_NAME = "Richard"
 
@@ -859,6 +909,29 @@ def book_slot():
         })
 
         qualifying = data.get("qualifying_answers") or data.get("qualifyingAnswers") or {}
+        initial_answers = data.get("initial_answers") if isinstance(data.get("initial_answers"), dict) else {}
+        try:
+            with closing(intake_connection()) as conn:
+                with conn:
+                    with conn.cursor() as cursor:
+                        ensure_intake_table(cursor)
+                        cursor.execute("SELECT answers_json FROM diagnostic_intake WHERE parent_email = %s", (parent_email,))
+                        row = cursor.fetchone()
+                        if row:
+                            initial_answers = json.loads(row[0])
+        except Exception as error:
+            print("BOOKING INTAKE LOOKUP ERROR:", type(error).__name__)
+
+        intake_labels = [
+            "Current experience with math", "Hoped outcome", "Difficulty finding support",
+            "Support tried before", "Desired diagnostic insight", "Time available each week",
+            "What matters if considering support", "Possible starting time", "Additional context"
+        ]
+        intake_html = "".join(
+            f"<li><strong>{escape(label)}:</strong> {escape(str(initial_answers.get(str(i), 'No answer provided')))}</li>"
+            for i, label in enumerate(intake_labels, start=1)
+        ) if initial_answers else "<li>Initial questionnaire unavailable for this email.</li>"
+
 
         parent_html = f"""
         <h2>Your Schrool Consultation Booking Is Confirmed</h2>
@@ -898,6 +971,9 @@ def book_slot():
         <p><strong>Test 2 Raw Score:</strong> {test2_raw}</p>
 
         <p><strong>Interpretation Summary:</strong> {interpretation_summary}</p>
+
+        <h3>Parent’s Initial Diagnostic Answers</h3>
+        <ol>{intake_html}</ol>
 
         <h3>Parent Questionnaire</h3>
         <p><strong>1. Current situation:</strong> {data.get("performance", "")}</p>
