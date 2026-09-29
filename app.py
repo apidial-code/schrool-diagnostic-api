@@ -18,6 +18,7 @@ import sqlite3
 import secrets
 import json
 from html import escape
+from urllib.parse import quote
 from contextlib import closing
 import psycopg2
 from contextlib import contextmanager
@@ -541,7 +542,7 @@ def send_single_test_results_email(data):
                     If you would like to talk through your child's result, you can book a free consultation to consider what may be useful next.
                 </p>
 
-                <a href="https://test.schrool.net/schrool-fresher/booking.html"
+                <a href="https://test.schrool.net/schrool-fresher/booking.html?email={escape(quote(data['parent_email'], safe=''), quote=True)}"
                    style="display:inline-block; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; padding:16px 28px; border-radius:8px; text-decoration:none; font-weight:bold;">
                     Book My Free Consultation
                 </a>
@@ -661,7 +662,7 @@ def send_combined_results_email(first_test, second_test):
                         If you would like to talk through your child's results, you can book a free consultation to consider what may be useful next.
                     </p>
 
-                    <a href="https://test.schrool.net/schrool-fresher/booking.html"
+                    <a href="https://test.schrool.net/schrool-fresher/booking.html?email={escape(quote(data['parent_email'], safe=''), quote=True)}"
                        style="display:inline-block; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; padding:16px 32px; text-decoration:none; border-radius:10px; font-size:18px; font-weight:bold;">
                        Book My Free Consultation
                     </a>
