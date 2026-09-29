@@ -738,7 +738,22 @@ def send_followup_email(data):
 # CONSULTATION BOOKING ENDPOINTS
 # ============================================================================
 
-booked_slots = []
+def booking_connection():
+    return psycopg2.connect(os.environ["DATABASE_URL"], sslmode="require")
+
+
+def ensure_booking_table(cursor):
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS consultation_bookings (
+            id BIGSERIAL PRIMARY KEY,
+            booking_date DATE NOT NULL,
+            booking_time TEXT NOT NULL,
+            parent_email TEXT NOT NULL UNIQUE,
+            parent_name TEXT,
+            student_name TEXT,
+            UNIQUE (booking_date, booking_time)
+        )
+    """)
 
 def intake_connection():
     return psycopg2.connect(os.environ["DATABASE_URL"], sslmode="require")
@@ -801,10 +816,25 @@ def booking_slots():
     if request.method == "OPTIONS":
         return cors_response(jsonify({"status": "ok"}), 200)
 
-    return cors_response(jsonify({
-        "success": True,
-        "booked_slots": booked_slots
-    }), 200)
+    try:
+        with closing(booking_connection()) as conn:
+            with conn:
+                with conn.cursor() as cursor:
+                    ensure_booking_table(cursor)
+                    cursor.execute("""
+                        SELECT booking_date, booking_time
+                        FROM consultation_bookings
+                        WHERE booking_date >= CURRENT_DATE
+                        ORDER BY booking_date, booking_time
+                    """)
+                    booked_slots = [
+                        {"booking_date": row[0].isoformat(), "booking_time": row[1]}
+                        for row in cursor.fetchall()
+                    ]
+        return cors_response(jsonify({"success": True, "booked_slots": booked_slots}), 200)
+    except Exception as error:
+        print("BOOKING SLOTS DB ERROR:", type(error).__name__)
+        return cors_response(jsonify({"success": False, "error": "Booking times are temporarily unavailable."}), 503)
 
 
 @app.route("/api/book-slot", methods=["POST", "OPTIONS"])
@@ -881,32 +911,33 @@ def book_slot():
             test2_raw = "N/A"
             interpretation_summary = "Diagnostic results were not found for this booking email."
 
-        # Prevent same slot being booked twice
-        for slot in booked_slots:
-            if (
-                str(slot.get("booking_date")).strip() == booking_date
-                and str(slot.get("booking_time")).strip() == booking_time
-            ):
-                return cors_response(jsonify({
-                    "success": False,
-                    "error": "This slot is already booked."
-                }), 409)
-
-        # Prevent same parent booking multiple times
-        for slot in booked_slots:
-            if str(slot.get("parent_email", "")).strip().lower() == parent_email:
-                return cors_response(jsonify({
-                    "success": False,
-                    "error": "This email has already booked a consultation."
-                }), 409)
-
-        booked_slots.append({
-            "booking_date": booking_date,
-            "booking_time": booking_time,
-            "parent_email": parent_email,
-            "parent_name": data.get("parent_name"),
-            "student_name": data.get("student_name")
-        })
+        # Database constraints protect both rules across dynos and restarts.
+        with closing(booking_connection()) as conn:
+            with conn:
+                with conn.cursor() as cursor:
+                    ensure_booking_table(cursor)
+                    cursor.execute("""
+                        INSERT INTO consultation_bookings
+                            (booking_date, booking_time, parent_email, parent_name, student_name)
+                        VALUES (%s, %s, %s, %s, %s)
+                        ON CONFLICT DO NOTHING
+                        RETURNING id
+                    """, (booking_date, booking_time, parent_email,
+                          data.get("parent_name"), data.get("student_name")))
+                    if cursor.fetchone() is None:
+                        cursor.execute("""
+                            SELECT 1 FROM consultation_bookings
+                            WHERE parent_email = %s
+                        """, (parent_email,))
+                        if cursor.fetchone():
+                            return cors_response(jsonify({
+                                "success": False,
+                                "error": "This email has already booked a consultation."
+                            }), 409)
+                        return cors_response(jsonify({
+                            "success": False,
+                            "error": "This slot is already booked."
+                        }), 409)
 
         qualifying = data.get("qualifying_answers") or data.get("qualifyingAnswers") or {}
         initial_answers = data.get("initial_answers") if isinstance(data.get("initial_answers"), dict) else {}
