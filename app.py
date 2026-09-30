@@ -900,7 +900,8 @@ def book_slot():
             test2_raw = diagnostic["test2_raw"] or "N/A"
 
             try:
-                interpretation_summary = get_interpretation(int(test2_score))
+                interpretation_score = test2_score if diagnostic["test2_score"] is not None else test1_score
+                interpretation_summary = get_interpretation(int(interpretation_score))
             except Exception:
                 interpretation_summary = "Interpretation not available."
         else:
