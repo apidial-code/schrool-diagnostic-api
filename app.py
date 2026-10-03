@@ -146,14 +146,6 @@ def init_database():
             """
         )
 
-        seven_days_ago = (datetime.now() - timedelta(days=7)).isoformat()
-        conn.execute(
-            """
-            DELETE FROM test_results
-            WHERE created_at < ?
-            """,
-            (seven_days_ago,),
-        )
 
 
 init_database()
@@ -165,9 +157,9 @@ init_database()
 def store_first_test(student_key, data, expected_second_year):
     now = datetime.now().isoformat()
     with get_db() as conn:
-        conn.execute(
+        inserted = conn.execute(
             """
-            INSERT OR REPLACE INTO test_results (
+            INSERT OR IGNORE INTO test_results (
                 student_key, parent_email, parent_name, student_name,
                 school_grade, test_curriculum,
                 test1_name, test1_score, test1_raw, test1_year, expected_second_year,
@@ -192,6 +184,9 @@ def store_first_test(student_key, data, expected_second_year):
             ),
         )
 
+        if inserted.rowcount != 1:
+            raise ValueError("A diagnostic set already exists for this child. Continue the unfinished set instead of restarting it.")
+
 
 def get_first_test(student_key):
     with get_db() as conn:
@@ -210,14 +205,15 @@ def get_first_test(student_key):
 def store_second_test(student_key, data):
     now = datetime.now().isoformat()
     with get_db() as conn:
-        conn.execute(
+        updated = conn.execute(
             """
             UPDATE test_results
             SET test2_name = ?,
                 test2_score = ?,
                 test2_raw = ?,
                 updated_at = ?
-            WHERE student_key = ?
+            WHERE student_key = ? AND test2_name IS NULL
+                AND expected_second_year = ? AND lower(test_curriculum) = lower(?)
             """,
             (
                 f"{data['test_curriculum']} Year {data['test_grade']}",
@@ -225,8 +221,13 @@ def store_second_test(student_key, data):
                 f"{data['score']}/{data['total']}",
                 now,
                 student_key,
+                int(data["test_grade"]),
+                data["test_curriculum"],
             ),
         )
+
+        if updated.rowcount != 1:
+            raise ValueError("This test cannot be submitted: the set is complete or the test does not match the remaining year.")
 
 
 def cleanup_test_data(student_key):
@@ -1137,8 +1138,21 @@ def submit_test():
 
             data["next_test_grade"] = expected_second_year
 
-            # store or refresh first test record before sending email
-            store_first_test(student_key, data, expected_second_year)
+            # Email the stored first result without replacing the diagnostic set.
+            record = get_first_test(student_key)
+            if not record:
+                return jsonify({"success": False, "error": "First test record not found"}), 404
+            if record["test2_name"] or record["expected_second_year"] is None:
+                return jsonify({"success": False, "error": "This diagnostic set is already complete."}), 409
+            if (int(data["test_grade"]) != record["test1_year"]
+                    or expected_second_year != record["expected_second_year"]
+                    or str(data["test_curriculum"]).lower() != str(record["test_curriculum"]).lower()):
+                return jsonify({"success": False, "error": "The continuation request does not match the stored diagnostic set."}), 400
+            raw_score, raw_total = record["test1_raw"].split("/")
+            data.update(parent_email=record["parent_email"], parent_name=record["parent_name"],
+                        student_name=record["student_name"], test_curriculum=record["test_curriculum"],
+                        test_grade=record["test1_year"], percentage=record["test1_score"],
+                        score=raw_score, total=raw_total, school_grade=record["school_grade"])
 
             result = send_first_test_email(data)
 
@@ -1237,6 +1251,14 @@ def submit_test():
                 "error": "First test record not found"
             }), 404
 
+        if first_test["test2_name"] or first_test["expected_second_year"] is None:
+            return jsonify({"success": False, "error": "This diagnostic set is already complete. Its results have been preserved."}), 409
+        expected_year = int(first_test["expected_second_year"])
+        if int(data["test_grade"]) != expected_year:
+            return jsonify({"success": False, "error": f"Incorrect second test. Please complete Year {expected_year}."}), 400
+        if str(data["test_curriculum"]).lower() != str(first_test["test_curriculum"]).lower():
+            return jsonify({"success": False, "error": "The second test must use the same curriculum as the first test."}), 400
+
         second_test = {
             "grade": data["test_grade"],
             "test_grade": data["test_grade"],
@@ -1268,6 +1290,8 @@ def submit_test():
             "error": result.get("error", "Failed to send combined results email"),
         }), 500
 
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 409
     except Exception as e:
         print(f"Error in submit_test: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
